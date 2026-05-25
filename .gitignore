@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+node_modules/
+vendor/
+build/
+.dart_tool/
+*.log
+backend/storage/logs/*.log
+backend/bootstrap/cache/*.php
+mobile/build/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+
+.idea/
