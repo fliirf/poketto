@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
@@ -28,11 +28,20 @@ export function TransactionForm({
     transaction_date: toDateTimeLocal(transaction?.transaction_date ?? transaction?.date),
     description: transaction?.description ?? ""
   });
+  const availableCategories = useMemo(
+    () => categories.filter((category) => category.type === form.type),
+    [categories, form.type]
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
     setError("");
+    if (!form.category_id) {
+      setError("Pilih kategori transaksi terlebih dahulu.");
+      setSaving(false);
+      return;
+    }
     try {
       if (transaction) {
         await api.updateTransaction(transaction.id, form);
@@ -53,7 +62,18 @@ export function TransactionForm({
       <form onSubmit={submit} className="grid gap-4">
         {error ? <ErrorState message={error} /> : null}
         <Field label="Tipe">
-          <AppSelect value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value as TransactionType })}>
+          <AppSelect
+            value={form.type}
+            onChange={(event) => {
+              const nextType = event.target.value as TransactionType;
+              const currentCategory = categories.find((category) => category.id === form.category_id);
+              setForm({
+                ...form,
+                type: nextType,
+                category_id: currentCategory?.type === nextType ? form.category_id : null
+              });
+            }}
+          >
             <option value="expense">Pengeluaran</option>
             <option value="income">Pemasukan</option>
           </AppSelect>
@@ -72,15 +92,20 @@ export function TransactionForm({
           <AppSelect
             value={form.category_id ?? ""}
             onChange={(event) => setForm({ ...form, category_id: event.target.value ? Number(event.target.value) : null })}
-            required={form.type === "expense"}
+            required
           >
             <option value="">Pilih kategori</option>
-            {categories.map((category) => (
+            {availableCategories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name} ({category.type === "income" ? "Pemasukan" : "Pengeluaran"})
               </option>
             ))}
           </AppSelect>
+          {!availableCategories.length ? (
+            <span className="text-xs font-semibold text-red-600">
+              Belum ada kategori {form.type === "income" ? "pemasukan" : "pengeluaran"}. Tambahkan kategori dulu.
+            </span>
+          ) : null}
         </Field>
         <Field label="Tanggal">
           <AppInput

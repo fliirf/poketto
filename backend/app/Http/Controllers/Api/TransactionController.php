@@ -70,7 +70,7 @@ class TransactionController extends ApiController
     {
         $this->authorizeTransaction($request, $transaction);
         $validated = $this->validateTransaction($request, true);
-        $category = $this->resolveCategory($request, $validated, required: ($validated['type'] ?? $transaction->type) === 'expense');
+        $category = $this->resolveCategory($request, $validated, required: false);
 
         $payload = $validated;
         if ($category) {
@@ -138,7 +138,7 @@ class TransactionController extends ApiController
 
         return $request->validate([
             'type' => [$required, Rule::in(['income', 'expense'])],
-            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'category_id' => [$required, 'integer', 'exists:categories,id'],
             'amount' => [$required, 'numeric', 'min:0.01'],
             'description' => ['nullable', 'string', 'max:255'],
             'transaction_date' => [$required, 'date'],
@@ -192,8 +192,8 @@ class TransactionController extends ApiController
 
     private function resolveCategory(Request $request, array $validated, bool $required = true): ?Category
     {
-        if (($validated['type'] ?? null) === 'expense' && empty($validated['category_id'])) {
-            abort(422, 'category_id wajib untuk expense.');
+        if ($required && empty($validated['category_id'])) {
+            abort(422, 'category_id wajib diisi.');
         }
 
         if (empty($validated['category_id'])) {

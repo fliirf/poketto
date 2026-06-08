@@ -77,7 +77,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
     const validation = body?.errors
       ? Object.values(body.errors).flat().join(" ")
       : undefined;
-    throw new Error(validation || body?.message || "Request gagal.");
+    throw new Error(cleanApiMessage(validation || body?.message || "Request gagal."));
   }
 
   return body.data;
@@ -115,6 +115,14 @@ function filenameFromDisposition(disposition: string | null) {
   const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
   const value = match?.[1] ?? match?.[2];
   return value ? decodeURIComponent(value) : null;
+}
+
+function cleanApiMessage(message: string) {
+  if (message.includes("SQLSTATE") || message.includes("Integrity constraint violation")) {
+    return "Data belum lengkap atau tidak valid. Periksa kembali form lalu coba lagi.";
+  }
+
+  return message;
 }
 
 export const api = {
