@@ -107,10 +107,3 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
 7. Check dashboard summary and reports.
 8. Add expenses until budget warnings appear.
 9. Logout.
-
-## Known Issues
-
-- PDF export is still served by the legacy Laravel web route.
-- Next.js uses `GET /api/transactions/export-pdf` for authenticated PDF downloads; the legacy Laravel web PDF route is preserved.
-- Exchange rate integration is stubbed unless `EXCHANGE_RATE_API_KEY` is configured.
-- Mobile SQLite fallback remains for offline/demo use and is not the primary source of truth when API auth is active.
