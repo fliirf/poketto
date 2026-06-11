@@ -2,18 +2,16 @@ export function AppTable({
   headers,
   children,
   columnClasses = [],
-  headerClasses = [],
-  minWidthClass = "min-w-[720px]"
+  headerClasses = []
 }: {
   headers: string[];
   children: React.ReactNode;
   columnClasses?: string[];
   headerClasses?: string[];
-  minWidthClass?: string;
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className={`w-full ${minWidthClass} table-fixed border-separate border-spacing-y-2 text-left`}>
+      <table className="w-full min-w-[720px] table-fixed border-separate border-spacing-y-2 text-left">
         {columnClasses.length ? (
           <colgroup>
             {headers.map((header, index) => (

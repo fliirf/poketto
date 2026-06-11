@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
@@ -11,24 +11,6 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { api, type TransactionPayload } from "@/lib/api";
 import { formatNumberInput, parseNumberInput, toDateInput } from "@/lib/format";
 import type { Category, Transaction, TransactionType } from "@/types/poketto";
-
-type LocationPayload = Pick<TransactionPayload, "location_lat" | "location_lng" | "location_name">;
-
-function geolocationErrorMessage(error: unknown) {
-  if (typeof GeolocationPositionError !== "undefined" && error instanceof GeolocationPositionError) {
-    if (error.code === error.PERMISSION_DENIED) {
-      return "Izin lokasi ditolak oleh browser atau sistem operasi.";
-    }
-    if (error.code === error.POSITION_UNAVAILABLE) {
-      return "Posisi perangkat belum tersedia. Coba aktifkan Location Services di Windows.";
-    }
-    if (error.code === error.TIMEOUT) {
-      return "Pengambilan lokasi terlalu lama. Coba lagi atau gunakan lokasi perkiraan.";
-    }
-  }
-
-  return "Lokasi browser belum bisa dibaca.";
-}
 
 export function TransactionForm({
   categories,
@@ -41,14 +23,8 @@ export function TransactionForm({
   const toast = useToast();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [locationEnabled] = useState(true);
+  const [locationEnabled, setLocationEnabled] = useState(false);
   const [locationStatus, setLocationStatus] = useState("");
-  const [locationPayload, setLocationPayload] = useState<LocationPayload>(() => ({
-    location_lat: transaction?.location_lat ?? null,
-    location_lng: transaction?.location_lng ?? null,
-    location_name: transaction?.location_name ?? null
-  }));
-  const [locating, setLocating] = useState(false);
   const [amountInput, setAmountInput] = useState(() => formatNumberInput(transaction?.amount));
   const [form, setForm] = useState<TransactionPayload>({
     type: transaction?.type ?? "expense",
@@ -62,116 +38,42 @@ export function TransactionForm({
     [categories, form.type]
   );
 
-  async function reverseGeocode(latitude: number, longitude: number) {
-    try {
-      const response = await fetch(
-        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=id`
-      );
-      const data = await response.json();
-      const parts = [
-        data.locality,
-        data.city && data.city !== data.locality ? data.city : null,
-        data.principalSubdivision
-      ].filter(Boolean);
+  useEffect(() => {
+    api
+      .userSettings()
+      .then((data) => setLocationEnabled(Boolean(data.user_settings.location_enabled)))
+      .catch(() => setLocationEnabled(false));
+  }, []);
 
-      if (parts.length) return parts.join(", ");
-    } catch {
-      // Try the next public reverse-geocode source below.
-    }
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1&accept-language=id`
-      );
-      const data = await response.json();
-      const address = data.address ?? {};
-      const locality = address.village ?? address.suburb ?? address.town ?? address.city_district ?? address.city;
-      const region = address.county ?? address.city ?? address.state;
-      const parts = [locality, region && region !== locality ? region : null].filter(Boolean);
-
-      if (parts.length) return parts.join(", ");
-    }
-    catch {
-      return null;
-    }
-
-    return null;
-  }
-
-  async function resolveApproximateLocation(): Promise<LocationPayload> {
-    try {
-      const response = await fetch("https://ipwho.is/");
-      const data = await response.json();
-
-      if (!data.success || typeof data.latitude !== "number" || typeof data.longitude !== "number") {
-        return {};
-      }
-
-      const latitude = Number(data.latitude.toFixed(7));
-      const longitude = Number(data.longitude.toFixed(7));
-      const parts = [data.city, data.region].filter(Boolean);
-      const nextLocation = {
-        location_lat: latitude,
-        location_lng: longitude,
-        location_name: parts.length ? `${parts.join(", ")} (perkiraan)` : "Lokasi perkiraan"
-      };
-
-      setLocationPayload(nextLocation);
-      setLocationStatus(`Lokasi perkiraan: ${nextLocation.location_name}`);
-
-      return nextLocation;
-    } catch {
-      return {};
-    }
-  }
-
-  async function resolveBrowserLocation({ silent = false }: { silent?: boolean } = {}): Promise<LocationPayload> {
+  async function resolveBrowserLocation() {
     if (form.type !== "expense" || !locationEnabled || typeof navigator === "undefined" || !navigator.geolocation) {
       return {};
     }
 
-    setLocating(true);
     setLocationStatus("Mengambil lokasi...");
 
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: false,
-          timeout: 20_000,
-          maximumAge: 300_000
+          enableHighAccuracy: true,
+          timeout: 8000,
+          maximumAge: 60_000
         });
       });
 
       const latitude = Number(position.coords.latitude.toFixed(7));
       const longitude = Number(position.coords.longitude.toFixed(7));
-      const locationName = await reverseGeocode(latitude, longitude);
-      const nextLocation = {
+      setLocationStatus("Lokasi berhasil ditambahkan.");
+
+      return {
         location_lat: latitude,
         location_lng: longitude,
-        location_name: locationName ?? "Lokasi transaksi"
+        location_name: `Koordinat ${latitude}, ${longitude}`
       };
-
-      setLocationPayload(nextLocation);
-      setLocationStatus(locationName ? `Lokasi berhasil: ${locationName}` : "Lokasi berhasil ditambahkan.");
-
-      return nextLocation;
-    } catch (error) {
-      const reason = geolocationErrorMessage(error);
-      const approximateLocation = await resolveApproximateLocation();
-      if (approximateLocation.location_lat) {
-        if (!silent) {
-          toast.success("Lokasi presisi belum tersedia, memakai lokasi perkiraan.");
-        }
-        return approximateLocation;
-      }
-
-      setLocationStatus(`${reason} Transaksi tetap bisa disimpan tanpa lokasi.`);
-      if (!silent) {
-        toast.error(reason);
-      }
+    } catch {
+      setLocationStatus("Lokasi tidak berhasil diambil. Transaksi tetap disimpan tanpa lokasi.");
+      toast.error("Lokasi tidak berhasil diambil. Transaksi tetap disimpan tanpa lokasi.");
       return {};
-    } finally {
-      setLocating(false);
     }
   }
 
@@ -200,12 +102,8 @@ export function TransactionForm({
 
     setSaving(true);
     try {
-      const latestLocation = form.type !== "expense" || !locationEnabled
-        ? { location_lat: null, location_lng: null, location_name: null }
-        : locationPayload.location_lat
-          ? locationPayload
-          : await resolveBrowserLocation({ silent: true });
-      const payload = { ...form, ...latestLocation };
+      const locationPayload = await resolveBrowserLocation();
+      const payload = { ...form, ...locationPayload };
 
       if (transaction) {
         await api.updateTransaction(transaction.id, payload);
@@ -235,10 +133,6 @@ export function TransactionForm({
             onChange={(event) => {
               const nextType = event.target.value as TransactionType;
               const currentCategory = categories.find((category) => category.id === form.category_id);
-              if (nextType === "income") {
-                setLocationPayload({ location_lat: null, location_lng: null, location_name: null });
-                setLocationStatus("");
-              }
               setForm({
                 ...form,
                 type: nextType,
@@ -300,25 +194,10 @@ export function TransactionForm({
           />
         </Field>
         {form.type === "expense" && locationEnabled ? (
-          <div className="rounded-2xl bg-slate-50 px-4 py-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-xs font-semibold text-slate-500">
-                <p>Lokasi aktif untuk pengeluaran.</p>
-                <p className="text-poketto-700">
-                  {locationStatus || locationPayload.location_name || "Ambil lokasi sebelum menyimpan. Jika lokasi presisi gagal, Poketto akan coba lokasi perkiraan."}
-                </p>
-              </div>
-              <AppButton
-                type="button"
-                variant="secondary"
-                className="min-h-10 shrink-0 rounded-xl text-xs"
-                disabled={locating || saving}
-                onClick={() => resolveBrowserLocation()}
-              >
-                {locating ? "Mengambil..." : locationPayload.location_lat ? "Ambil ulang" : "Ambil lokasi"}
-              </AppButton>
-            </div>
-          </div>
+          <p className="rounded-2xl bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-500">
+            Lokasi aktif. Browser akan meminta izin lokasi saat transaksi disimpan.
+            {locationStatus ? <span className="block text-poketto-700">{locationStatus}</span> : null}
+          </p>
         ) : null}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <AppButton type="button" variant="secondary" onClick={() => router.back()}>

@@ -22,11 +22,7 @@ export function formatAppCurrency(value: number | string | null | undefined, cur
 }
 
 export function formatNumberInput(value: number | string | null | undefined) {
-  const rawValue = String(value ?? "").trim();
-  const normalizedValue = /^-?\d+\.\d{1,2}$/.test(rawValue)
-    ? String(Math.trunc(Number(rawValue)))
-    : rawValue;
-  const digits = normalizedValue.replace(/\D/g, "");
+  const digits = String(value ?? "").replace(/\D/g, "");
   if (!digits) return "";
 
   return new Intl.NumberFormat("id-ID").format(Number(digits));

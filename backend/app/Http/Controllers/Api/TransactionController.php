@@ -121,29 +121,19 @@ class TransactionController extends ApiController
             ->orderBy('date')
             ->get();
 
-        $incomeTransactions = $transactions->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'income');
-        $expenseTransactions = $transactions->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'expense');
-        $income = $incomeTransactions->sum('amount');
-        $expense = $expenseTransactions->sum('amount');
+        $income = $transactions->where('type', 'income')->sum('amount');
+        $expense = $transactions->where('type', 'expense')->sum('amount');
         $period = $this->pdfPeriod($filters);
         $settings = $request->user()->userSetting;
         $currency = $settings?->currency ?? 'IDR';
-        $categoryBreakdown = $expenseTransactions
+        $categoryBreakdown = $transactions
+            ->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'expense')
             ->groupBy(fn (Transaction $transaction) => $transaction->category?->name ?? 'Tanpa kategori')
             ->map(fn ($items, string $category) => [
                 'category' => $category,
                 'total' => (float) $items->sum('amount'),
             ])
             ->sortByDesc('total')
-            ->values();
-        $dailyTrend = $expenseTransactions
-            ->groupBy(fn (Transaction $transaction) => Carbon::parse($transaction->transaction_date ?? $transaction->date ?? now())->format('Y-m-d'))
-            ->map(fn ($items, string $date) => [
-                'date' => $date,
-                'label' => Carbon::parse($date)->format('d M'),
-                'total' => (float) $items->sum('amount'),
-            ])
-            ->sortBy('date')
             ->values();
 
         $pdf = Pdf::loadView('transactions.pdf', [
@@ -154,8 +144,6 @@ class TransactionController extends ApiController
             'expense' => $expense,
             'currency' => $currency,
             'categoryBreakdown' => $categoryBreakdown,
-            'dailyTrend' => $dailyTrend,
-            'logoPath' => extension_loaded('gd') ? public_path('MASCOT.png') : null,
         ]);
 
         return $pdf->download($period['filename']);
@@ -280,10 +268,12 @@ class TransactionController extends ApiController
             ];
         }
 
+        $now = now();
+
         return [
-            'label' => 'Semua periode',
-            'year' => '',
-            'filename' => 'Laporan_Poketto_Semua_Periode.pdf',
+            'label' => $now->translatedFormat('F'),
+            'year' => $now->format('Y'),
+            'filename' => 'Laporan_Poketto_'.$now->format('Y_m').'.pdf',
         ];
     }
 

@@ -23,18 +23,15 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [dailyBudgetInput, setDailyBudgetInput] = useState("");
   const [monthlyBudgetInput, setMonthlyBudgetInput] = useState("");
-  const [thresholdInput, setThresholdInput] = useState("");
 
   useEffect(() => {
     api
       .userSettings()
       .then((data) => {
-        const userSettings = normalizeSettings(data.user_settings);
-        setSettings(userSettings);
-        setDailyBudgetInput(formatNumberInput(userSettings.daily_budget));
-        setMonthlyBudgetInput(formatNumberInput(userSettings.monthly_budget));
-        setThresholdInput(String(Math.round(Number(userSettings.budget_warning_threshold ?? 80))));
-        setStoredCurrency(userSettings.currency);
+        setSettings(data.user_settings);
+        setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
+        setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
+        setStoredCurrency(data.user_settings.currency);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Settings gagal dimuat."))
       .finally(() => setLoading(false));
@@ -47,21 +44,14 @@ export default function SettingsPage() {
     setSaving(true);
     setError("");
     try {
-      const threshold = Math.max(1, Math.min(99, Number(thresholdInput || 80)));
       const data = await api.updateUserSettings({
-        daily_budget: parseNumberInput(dailyBudgetInput),
-        monthly_budget: parseNumberInput(monthlyBudgetInput),
-        budget_warning_threshold: threshold,
-        currency: settings.currency.toUpperCase(),
-        notification_enabled: true,
-        location_enabled: true
+        ...settings,
+        currency: settings.currency.toUpperCase()
       });
-      const userSettings = normalizeSettings(data.user_settings);
-      setSettings(userSettings);
-      setDailyBudgetInput(formatNumberInput(userSettings.daily_budget));
-      setMonthlyBudgetInput(formatNumberInput(userSettings.monthly_budget));
-      setThresholdInput(String(Math.round(Number(userSettings.budget_warning_threshold ?? threshold))));
-      setStoredCurrency(userSettings.currency);
+      setSettings(data.user_settings);
+      setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
+      setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
+      setStoredCurrency(data.user_settings.currency);
       toast.success("Settings berhasil disimpan.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Settings gagal disimpan.";
@@ -74,7 +64,7 @@ export default function SettingsPage() {
 
   return (
     <AppLayout>
-      <PageHeader title="Pengaturan" description="Atur budget, mata uang, dan batas peringatan budget." />
+      <PageHeader title="Pengaturan" description="Atur budget, mata uang, notifikasi, dan preferensi lokasi." />
       {loading ? <LoadingState /> : null}
       {error ? <ErrorState message={error} /> : null}
       {settings ? (
@@ -125,24 +115,35 @@ export default function SettingsPage() {
                     type="text"
                     inputMode="numeric"
                     className="min-h-11 w-full rounded-2xl bg-transparent px-4 text-sm font-medium outline-none"
-                    value={thresholdInput}
+                    value={settings.budget_warning_threshold ?? 80}
                     onChange={(event) => {
-                      const digits = event.target.value.replace(/\D/g, "").slice(0, 2);
-                      setThresholdInput(digits);
-                      setSettings({
-                        ...settings,
-                        budget_warning_threshold: digits ? Math.max(1, Math.min(99, Number(digits))) : undefined
-                      });
-                    }}
-                    onBlur={() => {
-                      const value = Math.max(1, Math.min(99, Number(thresholdInput || 80)));
-                      setThresholdInput(String(value));
+                      const value = Math.min(99, Number(event.target.value.replace(/\D/g, "")) || 1);
                       setSettings({ ...settings, budget_warning_threshold: value });
                     }}
                   />
                   <span className="text-sm font-black text-slate-400">%</span>
                 </div>
               </Field>
+            </div>
+            <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
+              <label className="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                Notifikasi
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-poketto-500"
+                  checked={Boolean(settings.notification_enabled)}
+                  onChange={(event) => setSettings({ ...settings, notification_enabled: event.target.checked })}
+                />
+              </label>
+              <label className="flex items-center justify-between gap-4 rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700">
+                Lokasi
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-poketto-500"
+                  checked={Boolean(settings.location_enabled)}
+                  onChange={(event) => setSettings({ ...settings, location_enabled: event.target.checked })}
+                />
+              </label>
             </div>
             <div className="flex justify-end">
               <AppButton type="submit" disabled={saving}>
@@ -154,15 +155,4 @@ export default function SettingsPage() {
       ) : null}
     </AppLayout>
   );
-}
-
-function normalizeSettings(settings: UserSettings): UserSettings {
-  return {
-    ...settings,
-    daily_budget: Number(settings.daily_budget || 0),
-    monthly_budget: Number(settings.monthly_budget || 0),
-    budget_warning_threshold: Number(settings.budget_warning_threshold ?? 80),
-    notification_enabled: true,
-    location_enabled: true
-  };
 }

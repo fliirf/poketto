@@ -19,6 +19,8 @@ class UserSettingsController extends ApiController
             'monthly_budget' => ['sometimes', 'numeric', 'min:0'],
             'currency' => ['sometimes', 'string', Rule::in(['IDR', 'USD', 'EUR', 'SGD', 'JPY'])],
             'budget_warning_threshold' => ['sometimes', 'numeric', 'min:1', 'max:99'],
+            'notification_enabled' => ['sometimes', 'boolean'],
+            'location_enabled' => ['sometimes', 'boolean'],
         ], [
             'daily_budget.numeric' => 'Budget harian harus berupa angka.',
             'daily_budget.min' => 'Budget harian tidak boleh negatif.',
@@ -28,10 +30,9 @@ class UserSettingsController extends ApiController
             'budget_warning_threshold.numeric' => 'Batas peringatan harus berupa angka.',
             'budget_warning_threshold.min' => 'Batas peringatan minimal 1%.',
             'budget_warning_threshold.max' => 'Batas peringatan maksimal 99%.',
+            'notification_enabled.boolean' => 'Pengaturan notifikasi tidak valid.',
+            'location_enabled.boolean' => 'Pengaturan lokasi tidak valid.',
         ]);
-
-        $validated['notification_enabled'] = true;
-        $validated['location_enabled'] = true;
 
         $settings = $this->settings($request);
         $settings->update($validated);
@@ -41,7 +42,7 @@ class UserSettingsController extends ApiController
 
     private function settings(Request $request)
     {
-        $settings = $request->user()->userSetting()->firstOrCreate(
+        return $request->user()->userSetting()->firstOrCreate(
             ['user_id' => $request->user()->id],
             [
                 'daily_budget' => 100000,
@@ -52,14 +53,5 @@ class UserSettingsController extends ApiController
                 'location_enabled' => true,
             ],
         );
-
-        if (! $settings->notification_enabled || ! $settings->location_enabled) {
-            $settings->forceFill([
-                'notification_enabled' => true,
-                'location_enabled' => true,
-            ])->save();
-        }
-
-        return $settings->fresh();
     }
 }

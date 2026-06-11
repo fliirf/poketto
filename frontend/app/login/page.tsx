@@ -30,18 +30,13 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative grid min-h-dvh place-items-center overflow-hidden bg-[linear-gradient(135deg,#fff7ed_0%,#f8fbff_42%,#eaf4ff_100%)] px-4 py-10">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(115deg,rgba(242,143,51,0.24)_0%,rgba(242,143,51,0.04)_34%,rgba(255,255,255,0)_62%),linear-gradient(245deg,rgba(14,165,233,0.18)_0%,rgba(14,165,233,0.03)_38%,rgba(255,255,255,0)_68%),repeating-linear-gradient(90deg,rgba(148,163,184,0.09)_0px,rgba(148,163,184,0.09)_1px,transparent_1px,transparent_84px)]"
-      />
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-white/80 to-transparent" />
-      <div className="relative z-10 w-full max-w-md">
-        <div className="mb-8 rounded-[2rem] border border-white/70 bg-white/45 px-6 py-5 text-center shadow-soft backdrop-blur-md">
+    <main className="grid min-h-dvh place-items-center px-4 py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
           <BrandLogo className="justify-center" />
           <p className="mt-2 text-sm text-slate-500">Masuk ke dashboard keuanganmu.</p>
         </div>
-        <AppCard className="border-white/80 bg-white/90 shadow-soft backdrop-blur-md">
+        <AppCard>
           <form onSubmit={submit} className="grid gap-4">
             {error ? <ErrorState message={error} /> : null}
             <Field label="Email">
