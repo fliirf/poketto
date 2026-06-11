@@ -65,7 +65,14 @@ export function TransactionForm({
   useEffect(() => {
     api
       .userSettings()
-      .then((data) => setLocationEnabled(Boolean(data.user_settings.location_enabled)))
+      .then((data) => {
+        const enabled = Boolean(data.user_settings.location_enabled);
+        setLocationEnabled(enabled);
+        if (!enabled) {
+          setLocationPayload({ location_lat: null, location_lng: null, location_name: null });
+          setLocationStatus("");
+        }
+      })
       .catch(() => setLocationEnabled(false));
   }, []);
 
@@ -207,7 +214,7 @@ export function TransactionForm({
 
     setSaving(true);
     try {
-      const latestLocation = form.type !== "expense"
+      const latestLocation = form.type !== "expense" || !locationEnabled
         ? { location_lat: null, location_lng: null, location_name: null }
         : locationPayload.location_lat
           ? locationPayload

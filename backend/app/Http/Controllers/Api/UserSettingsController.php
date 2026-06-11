@@ -34,6 +34,14 @@ class UserSettingsController extends ApiController
             'location_enabled.boolean' => 'Pengaturan lokasi tidak valid.',
         ]);
 
+        if ($request->has('notification_enabled')) {
+            $validated['notification_enabled'] = $request->boolean('notification_enabled');
+        }
+
+        if ($request->has('location_enabled')) {
+            $validated['location_enabled'] = $request->boolean('location_enabled');
+        }
+
         $settings = $this->settings($request);
         $settings->update($validated);
 
