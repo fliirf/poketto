@@ -9,7 +9,7 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import { ErrorState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api, type TransactionPayload } from "@/lib/api";
-import { toDateTimeLocal } from "@/lib/format";
+import { toDateInput } from "@/lib/format";
 import type { Category, Transaction, TransactionType } from "@/types/poketto";
 
 function formatRupiahInput(value: number | string | null | undefined) {
@@ -40,7 +40,7 @@ export function TransactionForm({
     type: transaction?.type ?? "expense",
     category_id: transaction?.category_id ?? null,
     amount: transaction?.amount ?? 0,
-    transaction_date: toDateTimeLocal(transaction?.transaction_date ?? transaction?.date),
+    transaction_date: toDateInput(transaction?.date ?? transaction?.transaction_date),
     description: transaction?.description ?? ""
   });
   const availableCategories = useMemo(
@@ -147,7 +147,7 @@ export function TransactionForm({
         </Field>
         <Field label="Tanggal">
           <AppInput
-            type="datetime-local"
+            type="date"
             value={form.transaction_date}
             onChange={(event) => setForm({ ...form, transaction_date: event.target.value })}
             required

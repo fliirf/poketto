@@ -16,11 +16,11 @@ export function formatDate(value?: string | null) {
   }).format(new Date(value));
 }
 
-export function toDateTimeLocal(value?: string | null) {
+export function toDateInput(value?: string | null) {
   const date = value ? new Date(value) : new Date();
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60_000);
-  return local.toISOString().slice(0, 16);
+  return local.toISOString().slice(0, 10);
 }
 
 export function classNames(...values: Array<string | false | null | undefined>) {
