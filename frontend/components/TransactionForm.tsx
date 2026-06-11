@@ -14,6 +14,22 @@ import type { Category, Transaction, TransactionType } from "@/types/poketto";
 
 type LocationPayload = Pick<TransactionPayload, "location_lat" | "location_lng" | "location_name">;
 
+function geolocationErrorMessage(error: unknown) {
+  if (typeof GeolocationPositionError !== "undefined" && error instanceof GeolocationPositionError) {
+    if (error.code === error.PERMISSION_DENIED) {
+      return "Izin lokasi ditolak oleh browser atau sistem operasi.";
+    }
+    if (error.code === error.POSITION_UNAVAILABLE) {
+      return "Posisi perangkat belum tersedia. Coba aktifkan Location Services di Windows.";
+    }
+    if (error.code === error.TIMEOUT) {
+      return "Pengambilan lokasi terlalu lama. Coba lagi atau gunakan lokasi perkiraan.";
+    }
+  }
+
+  return "Lokasi browser belum bisa dibaca.";
+}
+
 export function TransactionForm({
   categories,
   transaction
@@ -89,6 +105,33 @@ export function TransactionForm({
     return null;
   }
 
+  async function resolveApproximateLocation(): Promise<LocationPayload> {
+    try {
+      const response = await fetch("https://ipwho.is/");
+      const data = await response.json();
+
+      if (!data.success || typeof data.latitude !== "number" || typeof data.longitude !== "number") {
+        return {};
+      }
+
+      const latitude = Number(data.latitude.toFixed(7));
+      const longitude = Number(data.longitude.toFixed(7));
+      const parts = [data.city, data.region].filter(Boolean);
+      const nextLocation = {
+        location_lat: latitude,
+        location_lng: longitude,
+        location_name: parts.length ? `${parts.join(", ")} (perkiraan)` : "Lokasi perkiraan"
+      };
+
+      setLocationPayload(nextLocation);
+      setLocationStatus(`Lokasi perkiraan: ${nextLocation.location_name}`);
+
+      return nextLocation;
+    } catch {
+      return {};
+    }
+  }
+
   async function resolveBrowserLocation({ silent = false }: { silent?: boolean } = {}): Promise<LocationPayload> {
     if (form.type !== "expense" || !locationEnabled || typeof navigator === "undefined" || !navigator.geolocation) {
       return {};
@@ -119,10 +162,19 @@ export function TransactionForm({
       setLocationStatus(locationName ? `Lokasi berhasil: ${locationName}` : "Lokasi berhasil ditambahkan.");
 
       return nextLocation;
-    } catch {
-      setLocationStatus("Lokasi tidak berhasil diambil. Transaksi tetap disimpan tanpa lokasi.");
+    } catch (error) {
+      const reason = geolocationErrorMessage(error);
+      const approximateLocation = await resolveApproximateLocation();
+      if (approximateLocation.location_lat) {
+        if (!silent) {
+          toast.success("Lokasi presisi belum tersedia, memakai lokasi perkiraan.");
+        }
+        return approximateLocation;
+      }
+
+      setLocationStatus(`${reason} Transaksi tetap bisa disimpan tanpa lokasi.`);
       if (!silent) {
-        toast.error("Lokasi tidak berhasil diambil. Pastikan izin lokasi aktif lalu coba lagi.");
+        toast.error(reason);
       }
       return {};
     } finally {
@@ -260,7 +312,7 @@ export function TransactionForm({
               <div className="text-xs font-semibold text-slate-500">
                 <p>Lokasi aktif untuk pengeluaran.</p>
                 <p className="text-poketto-700">
-                  {locationStatus || locationPayload.location_name || "Ambil lokasi sebelum menyimpan agar lebih akurat."}
+                  {locationStatus || locationPayload.location_name || "Ambil lokasi sebelum menyimpan. Jika lokasi presisi gagal, Poketto akan coba lokasi perkiraan."}
                 </p>
               </div>
               <AppButton
