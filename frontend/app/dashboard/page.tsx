@@ -307,35 +307,41 @@ export default function DashboardPage() {
               </AppCard>
             </div>
 
-            <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
-              {summary.category_breakdown.length ? (
-                <AppCard>
-                  <h2 className="font-black text-slate-900">Visualisasi pengeluaran</h2>
-                  <div className="mt-4 grid gap-3">
-                    {summary.category_breakdown.map((item, index) => {
-                      const max = Math.max(...summary.category_breakdown.map((breakdown) => Number(breakdown.total || 0)), 1);
-                      return (
-                        <div key={item.category}>
-                          <div className="mb-1 flex justify-between gap-3 text-sm">
-                            <span className="truncate font-bold text-slate-700">{item.category}</span>
-                            <span className="font-black text-slate-900">{formatCurrency(item.total, currency)}</span>
-                          </div>
-                          <div className="h-3 rounded-full bg-slate-100">
-                            <div
-                              className="h-3 rounded-full"
-                              style={{
-                                width: `${Math.max(6, (Number(item.total) / max) * 100)}%`,
-                                backgroundColor: pieColors[index % pieColors.length]
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
+            {summary.category_breakdown.length ? (
+              <AppCard>
+                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-black text-slate-900">Detail pengeluaran per kategori</h2>
+                    <p className="text-sm font-semibold text-slate-400">Urutan nominal pengeluaran pada periode ini.</p>
                   </div>
-                </AppCard>
-              ) : null}
-            </div>
+                  <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
+                    {summary.period?.label ?? "Periode terpilih"}
+                  </span>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {summary.category_breakdown.map((item, index) => {
+                    const max = Math.max(...summary.category_breakdown.map((breakdown) => Number(breakdown.total || 0)), 1);
+                    return (
+                      <div key={item.category} className="rounded-2xl bg-slate-50 p-4">
+                        <div className="mb-2 flex justify-between gap-3 text-sm">
+                          <span className="truncate font-bold text-slate-700">{item.category}</span>
+                          <span className="font-black text-slate-900">{formatCurrency(item.total, currency)}</span>
+                        </div>
+                        <div className="h-3 rounded-full bg-white">
+                          <div
+                            className="h-3 rounded-full"
+                            style={{
+                              width: `${Math.max(6, (Number(item.total) / max) * 100)}%`,
+                              backgroundColor: pieColors[index % pieColors.length]
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </AppCard>
+            ) : null}
 
             <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
               <AppCard>
