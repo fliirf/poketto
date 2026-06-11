@@ -29,14 +29,24 @@ class UserSetting extends Model
         $this->attributes['notification_enabled'] = $this->booleanForDatabase($value);
     }
 
+    public function getNotificationEnabledAttribute($value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
     public function setLocationEnabledAttribute($value): void
     {
         $this->attributes['location_enabled'] = $this->booleanForDatabase($value);
     }
 
-    private function booleanForDatabase($value): string
+    public function getLocationEnabledAttribute($value): bool
     {
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function booleanForDatabase($value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
     public function user()

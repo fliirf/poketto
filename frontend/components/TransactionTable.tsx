@@ -27,21 +27,32 @@ export function TransactionTable({
   return (
     <AppTable
       headers={["Tanggal", "Kategori", "Catatan", "Lokasi", "Nominal", "Aksi"]}
-      columnClasses={["w-36", "w-44", "w-[22%]", "w-40", "w-56", "w-52"]}
+      columnClasses={["w-32", "w-40", "w-64", "w-56", "w-48", "w-44"]}
       headerClasses={["", "", "", "", "text-right", "text-right"]}
+      minWidthClass="min-w-[1040px]"
     >
       {transactions.map((transaction) => {
         const type = transaction.type ?? transaction.category?.type ?? "expense";
         const category = transaction.category?.name ?? transaction.category_name ?? "Tanpa kategori";
         return (
           <tr key={transaction.id} className="rounded-2xl bg-slate-50 text-sm">
-            <td className="rounded-l-2xl px-3 py-4 whitespace-nowrap text-slate-500">{formatDate(transaction.date ?? transaction.transaction_date)}</td>
-            <td className="px-3 py-4 whitespace-nowrap">
-              <Badge tone={type}>{category}</Badge>
+            <td className="rounded-l-2xl px-3 py-4 whitespace-nowrap text-slate-500">
+              {formatDate(transaction.date ?? transaction.transaction_date)}
             </td>
-            <td className="max-w-[14rem] truncate px-3 py-4 text-slate-600">{transaction.description || "-"}</td>
-            <td className="max-w-[12rem] truncate px-3 py-4 text-slate-400">
-              {transaction.location_name || "-"}
+            <td className="px-3 py-4">
+              <div className="truncate whitespace-nowrap" title={category}>
+                <Badge tone={type}>{category}</Badge>
+              </div>
+            </td>
+            <td className="px-3 py-4 text-slate-600">
+              <div className="truncate whitespace-nowrap" title={transaction.description || "-"}>
+                {transaction.description || "-"}
+              </div>
+            </td>
+            <td className="px-3 py-4 text-slate-400">
+              <div className="truncate whitespace-nowrap" title={transaction.location_name || "-"}>
+                {transaction.location_name || "-"}
+              </div>
             </td>
             <td className={`px-3 py-4 text-right font-black whitespace-nowrap ${type === "income" ? "text-emerald-600" : "text-red-600"}`}>
               {type === "income" ? "+" : "-"} {formatAppCurrency(transaction.amount)}

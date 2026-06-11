@@ -41,6 +41,9 @@ class DashboardController extends ApiController
         $expenseTrend = $this->expenseTrend($user->id, $period['start'], $period['end'], $filters);
         $categoryBreakdown = $this->categoryBreakdown($user->id, $period['start'], $period['end'], $filters);
         $categoryBudgets = $this->categoryBudgets($user->id, $budgetPeriod['start'], $budgetPeriod['end'], $filters);
+        $hasPeriodFilter = ! empty($filters['start_date']) || ! empty($filters['end_date']) || ! empty($filters['month']);
+        $alertDailyStart = $hasPeriodFilter ? $period['start'] : Carbon::today()->startOfDay();
+        $alertDailyEnd = $hasPeriodFilter ? $period['end'] : Carbon::today()->endOfDay();
         $recent = $this->applyFilters(
             Transaction::with('category')->where('user_id', $user->id),
             $filters,
@@ -82,7 +85,14 @@ class DashboardController extends ApiController
             'category_breakdown' => $categoryBreakdown,
             'category_budgets' => $categoryBudgets,
             'recent_transactions' => $recent,
-            'alerts' => $budgetAlertService->forUser($user),
+            'alerts' => $budgetAlertService->forUser(
+                $user,
+                $alertDailyStart,
+                $alertDailyEnd,
+                $budgetPeriod['start'],
+                $budgetPeriod['end'],
+                $filters,
+            ),
         ]);
     }
 
