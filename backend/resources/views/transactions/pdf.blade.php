@@ -30,12 +30,15 @@
             width: 100%;
         }
         .brand-logo {
+            background: #fff3e5;
+            border: 1px solid #ffd8ad;
+            border-radius: 14px;
             display: inline-block;
-            height: 38px;
-            margin-top: 4px;
+            height: 52px;
             object-fit: contain;
+            padding: 7px;
             vertical-align: top;
-            width: 162px;
+            width: 52px;
         }
         .brand-copy {
             display: inline-block;
