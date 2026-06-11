@@ -17,12 +17,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-function next_web_url(string $path = ''): string
-{
-    $baseUrl = rtrim((string) config('app.frontend_url'), '/');
-    $path = '/'.ltrim($path, '/');
+if (! function_exists('next_web_url')) {
+    function next_web_url(string $path = ''): string
+    {
+        $baseUrl = rtrim((string) config('app.frontend_url'), '/');
+        $path = '/'.ltrim($path, '/');
 
-    return $baseUrl.($path === '/' ? '' : $path);
+        return $baseUrl.($path === '/' ? '' : $path);
+    }
 }
 
 Route::get('/', fn () => redirect()->away(next_web_url('/')));

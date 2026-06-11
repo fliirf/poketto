@@ -42,6 +42,13 @@ class BudgetAlertService
         $dailyEnd ??= Carbon::today()->endOfDay();
         $categoryStart ??= Carbon::now()->startOfMonth();
         $categoryEnd ??= Carbon::now()->endOfMonth();
+        $periodExpense = $this->expenseSum($user->id, $categoryStart, $categoryEnd, $filters);
+        $monthlyBudget = (float) $settings->monthly_budget;
+        $monthlyBudgetIsStillSafe = $monthlyBudget > 0 && $periodExpense < ($monthlyBudget * $warningRatio);
+
+        if ($monthlyBudgetIsStillSafe) {
+            return $alerts;
+        }
 
         if ($dailyStart->toDateString() === $dailyEnd->toDateString()) {
             $todayExpense = Transaction::query()
@@ -85,6 +92,32 @@ class BudgetAlertService
             }
         }
 
+        if ($monthlyBudget > 0 && $periodExpense >= $monthlyBudget) {
+            $alerts->push([
+                'id' => 0,
+                'user_id' => $user->id,
+                'category_id' => null,
+                'alert_type' => 'monthly_budget',
+                'message' => 'Jangan belanja lagi! Budget bulanan sudah habis.',
+                'threshold_value' => $monthlyBudget,
+                'current_value' => (float) $periodExpense,
+                'is_read' => false,
+                'created_at' => now()->toISOString(),
+            ]);
+        } elseif ($monthlyBudget > 0 && $periodExpense >= ($monthlyBudget * $warningRatio)) {
+            $alerts->push([
+                'id' => 0,
+                'user_id' => $user->id,
+                'category_id' => null,
+                'alert_type' => 'monthly_budget_warning',
+                'message' => "Peringatan! Pengeluaran bulanan sudah mencapai {$warningLabel}% dari budget.",
+                'threshold_value' => $monthlyBudget,
+                'current_value' => (float) $periodExpense,
+                'is_read' => false,
+                'created_at' => now()->toISOString(),
+            ]);
+        }
+
         Category::query()
             ->where('user_id', $user->id)
             ->where('type', 'expense')
@@ -122,5 +155,25 @@ class BudgetAlertService
             });
 
         return $alerts->values();
+    }
+
+    private function expenseSum(int $userId, Carbon $start, Carbon $end, array $filters = []): float
+    {
+        if (($filters['type'] ?? null) === 'income') {
+            return 0;
+        }
+
+        return (float) Transaction::query()
+            ->where('user_id', $userId)
+            ->where('type', 'expense')
+            ->when(! empty($filters['category_id']), fn ($query) => $query->where('category_id', $filters['category_id']))
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('transaction_date', [$start, $end])
+                    ->orWhere(function ($fallback) use ($start, $end) {
+                        $fallback->whereNull('transaction_date')
+                            ->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
+                    });
+            })
+            ->sum('amount');
     }
 }

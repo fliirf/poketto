@@ -67,6 +67,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
   const token = getToken();
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...options,
+    cache: "no-store",
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -89,6 +90,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
 async function download(path: string) {
   const token = getToken();
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
+    cache: "no-store",
     headers: {
       Accept: "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
