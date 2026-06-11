@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -18,14 +19,18 @@ class AuthController extends ApiController
             'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
+        [$user, $token] = DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+            ]);
 
-        $this->createDefaultUserData($user);
-        $token = $user->createToken('poketto-api')->plainTextToken;
+            $this->createDefaultUserData($user);
+            $token = $user->createToken('poketto-api')->plainTextToken;
+
+            return [$user, $token];
+        });
 
         return $this->success([
             'user' => $user,

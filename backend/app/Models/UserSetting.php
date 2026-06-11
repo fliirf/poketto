@@ -24,6 +24,21 @@ class UserSetting extends Model
         'location_enabled' => 'boolean',
     ];
 
+    public function setNotificationEnabledAttribute($value): void
+    {
+        $this->attributes['notification_enabled'] = $this->booleanForDatabase($value);
+    }
+
+    public function setLocationEnabledAttribute($value): void
+    {
+        $this->attributes['location_enabled'] = $this->booleanForDatabase($value);
+    }
+
+    private function booleanForDatabase($value): string
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 'true' : 'false';
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
