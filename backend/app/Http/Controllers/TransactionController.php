@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Transaction;
 use App\Services\PokettoApiClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Throwable;
@@ -164,12 +165,41 @@ public function exportPdf(Request $request)
         ->orderBy('date', 'asc')
         ->get();
 
-    $income = $transactions->where('category.type', 'income')->sum('amount');
-    $expense = $transactions->where('category.type', 'expense')->sum('amount');
+    $incomeTransactions = $transactions->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'income');
+    $expenseTransactions = $transactions->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'expense');
+    $income = $incomeTransactions->sum('amount');
+    $expense = $expenseTransactions->sum('amount');
     $monthName = date('F', mktime(0, 0, 0, $month, 1));
+    $currency = 'IDR';
+    $categoryBreakdown = $expenseTransactions
+        ->groupBy(fn (Transaction $transaction) => $transaction->category?->name ?? 'Tanpa kategori')
+        ->map(fn ($items, string $category) => [
+            'category' => $category,
+            'total' => (float) $items->sum('amount'),
+        ])
+        ->sortByDesc('total')
+        ->values();
+    $dailyTrend = $expenseTransactions
+        ->groupBy(fn (Transaction $transaction) => Carbon::parse($transaction->transaction_date ?? $transaction->date ?? now())->format('Y-m-d'))
+        ->map(fn ($items, string $date) => [
+            'date' => $date,
+            'label' => Carbon::parse($date)->format('d M'),
+            'total' => (float) $items->sum('amount'),
+        ])
+        ->sortBy('date')
+        ->values();
 
-    // Menghasilkan PDF dari view khusus
-    $pdf = Pdf::loadView('transactions.pdf', compact('transactions', 'monthName', 'year', 'income', 'expense'));
+    $pdf = Pdf::loadView('transactions.pdf', [
+        'transactions' => $transactions,
+        'monthName' => $monthName,
+        'year' => $year,
+        'income' => $income,
+        'expense' => $expense,
+        'currency' => $currency,
+        'categoryBreakdown' => $categoryBreakdown,
+        'dailyTrend' => $dailyTrend,
+        'logoPath' => extension_loaded('gd') ? public_path('MASCOT.png') : null,
+    ]);
     
     return $pdf->download("Laporan_Poketto_{$monthName}_{$year}.pdf");
 }
