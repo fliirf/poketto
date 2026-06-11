@@ -5,12 +5,14 @@ export function StatCard({
   label,
   value,
   tone = "neutral",
-  helper
+  helper,
+  currency
 }: {
   label: string;
   value: number | string;
   tone?: "neutral" | "income" | "expense" | "warning";
   helper?: string;
+  currency?: string;
 }) {
   const tones = {
     neutral: "text-slate-950",
@@ -23,7 +25,7 @@ export function StatCard({
     <AppCard className="min-h-36">
       <p className="text-sm font-bold text-slate-500">{label}</p>
       <p className={classNames("mt-3 text-2xl font-black tracking-normal sm:text-3xl", tones[tone])}>
-        {typeof value === "number" ? formatCurrency(value) : value}
+        {typeof value === "number" ? formatCurrency(value, currency) : value}
       </p>
       {helper ? <p className="mt-3 text-sm text-slate-500">{helper}</p> : null}
     </AppCard>

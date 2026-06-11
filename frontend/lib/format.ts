@@ -7,6 +7,32 @@ export function formatCurrency(value: number | string | null | undefined, curren
   }).format(amount);
 }
 
+export function getStoredCurrency() {
+  if (typeof window === "undefined") return "IDR";
+  return window.localStorage.getItem("poketto_currency") || "IDR";
+}
+
+export function setStoredCurrency(currency: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem("poketto_currency", currency);
+}
+
+export function formatAppCurrency(value: number | string | null | undefined, currency = getStoredCurrency()) {
+  return formatCurrency(value, currency);
+}
+
+export function formatNumberInput(value: number | string | null | undefined) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+
+  return new Intl.NumberFormat("id-ID").format(Number(digits));
+}
+
+export function parseNumberInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+}
+
 export function formatDate(value?: string | null) {
   if (!value) return "-";
   return new Intl.DateTimeFormat("id-ID", {

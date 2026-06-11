@@ -12,6 +12,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
+import { setStoredCurrency } from "@/lib/format";
 import type { Category, Filters, Transaction } from "@/types/poketto";
 
 export default function TransactionsPage() {
@@ -24,14 +25,17 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [currency, setCurrency] = useState("IDR");
 
   useEffect(() => {
     setLoading(true);
     setError("");
-    Promise.all([api.transactions(filters), api.categories()])
-      .then(([transactionData, categoryData]) => {
+    Promise.all([api.transactions(filters), api.categories(), api.userSettings()])
+      .then(([transactionData, categoryData, settingsData]) => {
         setTransactions(transactionData.transactions);
         setCategories(categoryData.categories);
+        setCurrency(settingsData.user_settings.currency);
+        setStoredCurrency(settingsData.user_settings.currency);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Transaksi gagal dimuat."))
       .finally(() => setLoading(false));
@@ -111,6 +115,10 @@ export default function TransactionsPage() {
       <div className="grid gap-5">
         <AppCard>
           <div className="grid gap-4">
+            <div>
+              <h2 className="text-base font-black text-slate-900">Filter transaksi</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-400">Cari dan saring data sebelum export PDF.</p>
+            </div>
             <AppInput
               type="search"
               placeholder="Cari kategori, catatan, atau lokasi..."
@@ -122,9 +130,9 @@ export default function TransactionsPage() {
         </AppCard>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Pemasukan" value={income} tone="income" />
-          <StatCard label="Pengeluaran" value={expense} tone="expense" />
-          <StatCard label="Sisa" value={income - expense} />
+          <StatCard label="Pemasukan" value={income} currency={currency} tone="income" />
+          <StatCard label="Pengeluaran" value={expense} currency={currency} tone="expense" />
+          <StatCard label="Sisa" value={income - expense} currency={currency} />
         </div>
 
         {loading ? <LoadingState /> : null}

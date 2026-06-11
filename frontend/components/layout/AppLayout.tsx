@@ -25,9 +25,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[18rem_1fr]">
       <Sidebar open={open} onClose={() => setOpen(false)} />
-      <main className="min-w-0 px-4 pb-10 md:px-8">
+      <main className="min-w-0 px-3 pb-8 sm:px-4 md:px-8 md:pb-10">
         <Topbar onMenu={() => setOpen(true)} />
-        <div className="mx-auto max-w-7xl">{children}</div>
+        <div className="mx-auto max-w-7xl animate-page-in">{children}</div>
       </main>
     </div>
   );

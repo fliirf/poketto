@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
-import { formatCurrency } from "@/lib/format";
+import { formatAppCurrency } from "@/lib/format";
 import type { Category } from "@/types/poketto";
 
 export default function CategoriesPage() {
@@ -73,12 +73,12 @@ export default function CategoriesPage() {
                     <p className="font-black text-slate-900">{category.name}</p>
                     <Badge tone={category.type}>{category.type === "income" ? "Pemasukan" : "Pengeluaran"}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-slate-500">Budget: {formatCurrency(category.monthly_budget ?? 0)}</p>
+                  <p className="mt-1 text-sm text-slate-500">Budget: {formatAppCurrency(category.monthly_budget ?? 0)}</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
                   <Link
                     href={`/categories/${category.id}/edit`}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:text-poketto-700"
+                    className="inline-flex h-10 min-w-16 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-extrabold text-slate-600 shadow-sm transition hover:border-poketto-200 hover:bg-poketto-50 hover:text-poketto-700"
                   >
                     Edit
                   </Link>
@@ -87,7 +87,7 @@ export default function CategoriesPage() {
                       <AppButton
                         type="button"
                         variant="danger"
-                        className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                        className="h-10 min-h-0 min-w-24 rounded-xl px-4 text-xs"
                         disabled={deletingId === category.id}
                         onClick={() => {
                           deleteCategory(category.id);
@@ -99,7 +99,7 @@ export default function CategoriesPage() {
                       <AppButton
                         type="button"
                         variant="ghost"
-                        className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                        className="h-10 min-h-0 min-w-16 rounded-xl px-4 text-xs"
                         onClick={() => setPendingDeleteId(null)}
                       >
                         Batal
@@ -109,7 +109,7 @@ export default function CategoriesPage() {
                     <AppButton
                       type="button"
                       variant="danger"
-                      className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                      className="h-10 min-h-0 min-w-16 rounded-xl px-4 text-xs shadow-sm"
                       disabled={Boolean(deletingId)}
                       onClick={() => setPendingDeleteId(category.id)}
                     >

@@ -6,7 +6,7 @@ import { AppButton } from "@/components/ui/AppButton";
 import { AppTable } from "@/components/ui/AppTable";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatAppCurrency, formatDate } from "@/lib/format";
 import type { Transaction } from "@/types/poketto";
 
 export function TransactionTable({
@@ -44,7 +44,7 @@ export function TransactionTable({
               {transaction.location_name || "-"}
             </td>
             <td className={`px-3 py-4 text-right font-black whitespace-nowrap ${type === "income" ? "text-emerald-600" : "text-red-600"}`}>
-              {type === "income" ? "+" : "-"} {formatCurrency(transaction.amount)}
+              {type === "income" ? "+" : "-"} {formatAppCurrency(transaction.amount)}
             </td>
             <td className="rounded-r-2xl px-3 py-4">
               <div className="flex items-center justify-end gap-2">

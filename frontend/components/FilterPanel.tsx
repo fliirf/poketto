@@ -17,7 +17,7 @@ export function FilterPanel({
   onReset: () => void;
 }) {
   return (
-    <div className="grid gap-3 lg:grid-cols-6">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.15fr_1fr_auto] xl:items-end">
       <Field label="Mulai">
         <AppInput type="date" value={filters.start_date ?? ""} onChange={(event) => onChange({ ...filters, start_date: event.target.value })} />
       </Field>
@@ -44,8 +44,8 @@ export function FilterPanel({
           <option value="expense">Pengeluaran</option>
         </AppSelect>
       </Field>
-      <div className="flex items-end">
-        <AppButton type="button" variant="secondary" className="w-full" onClick={onReset}>
+      <div className="flex md:col-span-2 xl:col-span-1">
+        <AppButton type="button" variant="secondary" className="w-full xl:min-w-28" onClick={onReset}>
           Reset
         </AppButton>
       </div>

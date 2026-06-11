@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
@@ -9,20 +9,8 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import { ErrorState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api, type TransactionPayload } from "@/lib/api";
-import { toDateInput } from "@/lib/format";
+import { formatNumberInput, parseNumberInput, toDateInput } from "@/lib/format";
 import type { Category, Transaction, TransactionType } from "@/types/poketto";
-
-function formatRupiahInput(value: number | string | null | undefined) {
-  const digits = String(value ?? "").replace(/\D/g, "");
-  if (!digits) return "";
-
-  return new Intl.NumberFormat("id-ID").format(Number(digits));
-}
-
-function parseRupiahInput(value: string) {
-  const digits = value.replace(/\D/g, "");
-  return digits ? Number(digits) : 0;
-}
 
 export function TransactionForm({
   categories,
@@ -35,7 +23,9 @@ export function TransactionForm({
   const toast = useToast();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [amountInput, setAmountInput] = useState(() => formatRupiahInput(transaction?.amount));
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [locationStatus, setLocationStatus] = useState("");
+  const [amountInput, setAmountInput] = useState(() => formatNumberInput(transaction?.amount));
   const [form, setForm] = useState<TransactionPayload>({
     type: transaction?.type ?? "expense",
     category_id: transaction?.category_id ?? null,
@@ -47,6 +37,45 @@ export function TransactionForm({
     () => categories.filter((category) => category.type === form.type),
     [categories, form.type]
   );
+
+  useEffect(() => {
+    api
+      .userSettings()
+      .then((data) => setLocationEnabled(Boolean(data.user_settings.location_enabled)))
+      .catch(() => setLocationEnabled(false));
+  }, []);
+
+  async function resolveBrowserLocation() {
+    if (form.type !== "expense" || !locationEnabled || typeof navigator === "undefined" || !navigator.geolocation) {
+      return {};
+    }
+
+    setLocationStatus("Mengambil lokasi...");
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 8000,
+          maximumAge: 60_000
+        });
+      });
+
+      const latitude = Number(position.coords.latitude.toFixed(7));
+      const longitude = Number(position.coords.longitude.toFixed(7));
+      setLocationStatus("Lokasi berhasil ditambahkan.");
+
+      return {
+        location_lat: latitude,
+        location_lng: longitude,
+        location_name: `Koordinat ${latitude}, ${longitude}`
+      };
+    } catch {
+      setLocationStatus("Lokasi tidak berhasil diambil. Transaksi tetap disimpan tanpa lokasi.");
+      toast.error("Lokasi tidak berhasil diambil. Transaksi tetap disimpan tanpa lokasi.");
+      return {};
+    }
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -73,14 +102,17 @@ export function TransactionForm({
 
     setSaving(true);
     try {
+      const locationPayload = await resolveBrowserLocation();
+      const payload = { ...form, ...locationPayload };
+
       if (transaction) {
-        await api.updateTransaction(transaction.id, form);
+        await api.updateTransaction(transaction.id, payload);
         toast.success("Transaksi berhasil diperbarui.");
       } else {
-        await api.createTransaction(form);
+        await api.createTransaction(payload);
         toast.success(form.type === "income" ? "Berhasil tambah pemasukan." : "Berhasil tambah pengeluaran.");
       }
-      router.push("/transactions");
+      router.push("/dashboard");
       router.refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Gagal menyimpan transaksi. Periksa kembali data yang diisi.";
@@ -119,9 +151,9 @@ export function TransactionForm({
             value={amountInput}
             placeholder="Contoh: 10.000"
             onChange={(event) => {
-              const formatted = formatRupiahInput(event.target.value);
+              const formatted = formatNumberInput(event.target.value);
               setAmountInput(formatted);
-              setForm({ ...form, amount: parseRupiahInput(formatted) });
+              setForm({ ...form, amount: parseNumberInput(formatted) });
             }}
             required
           />
@@ -161,6 +193,12 @@ export function TransactionForm({
             onChange={(event) => setForm({ ...form, description: event.target.value })}
           />
         </Field>
+        {form.type === "expense" && locationEnabled ? (
+          <p className="rounded-2xl bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-500">
+            Lokasi aktif. Browser akan meminta izin lokasi saat transaksi disimpan.
+            {locationStatus ? <span className="block text-poketto-700">{locationStatus}</span> : null}
+          </p>
+        ) : null}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <AppButton type="button" variant="secondary" onClick={() => router.back()}>
             Batal

@@ -55,6 +55,12 @@ export type DashboardSummary = {
   balance: number;
   daily_budget: number;
   monthly_budget: number;
+  currency: string;
+  period?: {
+    start_date: string;
+    end_date: string;
+    label: string;
+  };
   budget_warning_threshold: number;
   expense_trend: Array<{ date: string; label?: string; total: number }>;
   category_breakdown: Array<{ category: string; total: number }>;

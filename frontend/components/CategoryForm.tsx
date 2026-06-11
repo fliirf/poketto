@@ -9,6 +9,7 @@ import { AppSelect } from "@/components/ui/AppSelect";
 import { ErrorState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
+import { formatNumberInput, parseNumberInput } from "@/lib/format";
 import type { Category, TransactionType } from "@/types/poketto";
 
 export function CategoryForm({ category, onSaved }: { category?: Category; onSaved?: () => void | Promise<void> }) {
@@ -16,6 +17,7 @@ export function CategoryForm({ category, onSaved }: { category?: Category; onSav
   const toast = useToast();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [budgetInput, setBudgetInput] = useState(() => formatNumberInput(category?.monthly_budget ?? 0));
   const [form, setForm] = useState({
     name: category?.name ?? "",
     type: category?.type ?? "expense",
@@ -44,6 +46,7 @@ export function CategoryForm({ category, onSaved }: { category?: Category; onSav
         toast.success("Kategori berhasil ditambahkan.");
         await onSaved?.();
         setForm({ name: "", type: form.type, monthly_budget: 0 });
+        setBudgetInput("");
       }
       router.refresh();
     } catch (err) {
@@ -70,11 +73,15 @@ export function CategoryForm({ category, onSaved }: { category?: Category; onSav
         </Field>
         <Field label="Budget bulanan">
           <AppInput
-            type="number"
-            min="0"
-            step="1"
-            value={form.monthly_budget}
-            onChange={(event) => setForm({ ...form, monthly_budget: Number(event.target.value) })}
+            type="text"
+            inputMode="numeric"
+            value={budgetInput}
+            placeholder="Contoh: 500.000"
+            onChange={(event) => {
+              const formatted = formatNumberInput(event.target.value);
+              setBudgetInput(formatted);
+              setForm({ ...form, monthly_budget: parseNumberInput(formatted) });
+            }}
           />
         </Field>
         <div className="flex justify-end gap-2">

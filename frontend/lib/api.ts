@@ -22,6 +22,9 @@ export type TransactionPayload = {
   amount: number;
   transaction_date: string;
   description?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  location_name?: string | null;
 };
 
 export type CategoryPayload = {

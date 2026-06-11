@@ -24,14 +24,26 @@ class BudgetAlertService
                 'location_enabled' => true,
             ],
         );
+        if (! $settings->notification_enabled) {
+            return $alerts;
+        }
+
+        $warningPercent = (float) ($settings->budget_warning_threshold ?? 80);
+        $warningRatio = max(1, min(99, $warningPercent)) / 100;
 
         $todayExpense = Transaction::query()
             ->where('user_id', $user->id)
             ->where('type', 'expense')
-            ->whereDate('transaction_date', Carbon::today())
+            ->where(function ($query) {
+                $query->whereDate('transaction_date', Carbon::today())
+                    ->orWhere(function ($fallback) {
+                        $fallback->whereNull('transaction_date')->whereDate('date', Carbon::today());
+                    });
+            })
             ->sum('amount');
 
-        if ((float) $settings->daily_budget > 0 && $todayExpense >= (float) $settings->daily_budget) {
+        $dailyBudget = (float) $settings->daily_budget;
+        if ($dailyBudget > 0 && $todayExpense >= $dailyBudget) {
             $alerts->push([
                 'id' => 0,
                 'user_id' => $user->id,
@@ -39,6 +51,18 @@ class BudgetAlertService
                 'alert_type' => 'daily_budget',
                 'message' => 'Jangan belanja lagi! Budget harian sudah habis.',
                 'threshold_value' => (float) $settings->daily_budget,
+                'current_value' => (float) $todayExpense,
+                'is_read' => false,
+                'created_at' => now()->toISOString(),
+            ]);
+        } elseif ($dailyBudget > 0 && $todayExpense >= ($dailyBudget * $warningRatio)) {
+            $alerts->push([
+                'id' => 0,
+                'user_id' => $user->id,
+                'category_id' => null,
+                'alert_type' => 'daily_budget_warning',
+                'message' => "Peringatan! Pengeluaran harian sudah mencapai {$warningPercent}% dari budget.",
+                'threshold_value' => $dailyBudget,
                 'current_value' => (float) $todayExpense,
                 'is_read' => false,
                 'created_at' => now()->toISOString(),
@@ -53,22 +77,28 @@ class BudgetAlertService
             ->where('type', 'expense')
             ->where('monthly_budget', '>', 0)
             ->get()
-            ->each(function (Category $category) use ($alerts, $monthStart, $monthEnd, $user): void {
+            ->each(function (Category $category) use ($alerts, $monthStart, $monthEnd, $user, $warningRatio, $warningPercent): void {
                 $spent = Transaction::query()
                     ->where('user_id', $user->id)
                     ->where('category_id', $category->id)
                     ->where('type', 'expense')
-                    ->whereBetween('transaction_date', [$monthStart, $monthEnd])
+                    ->where(function ($query) use ($monthStart, $monthEnd) {
+                        $query->whereBetween('transaction_date', [$monthStart, $monthEnd])
+                            ->orWhere(function ($fallback) use ($monthStart, $monthEnd) {
+                                $fallback->whereNull('transaction_date')
+                                    ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()]);
+                            });
+                    })
                     ->sum('amount');
 
-                $threshold = (float) $category->monthly_budget * 0.8;
+                $threshold = (float) $category->monthly_budget * $warningRatio;
                 if ($spent >= $threshold) {
                     $alerts->push([
                         'id' => 0,
                         'user_id' => $user->id,
                         'category_id' => $category->id,
                         'alert_type' => 'category_budget',
-                        'message' => "Peringatan! Pengeluaran kategori {$category->name} telah mencapai 80% dari budget bulanan.",
+                        'message' => "Peringatan! Pengeluaran kategori {$category->name} telah mencapai {$warningPercent}% dari budget bulanan.",
                         'threshold_value' => (float) $category->monthly_budget,
                         'current_value' => (float) $spent,
                         'is_read' => false,

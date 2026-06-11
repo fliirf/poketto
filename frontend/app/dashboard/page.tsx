@@ -10,7 +10,7 @@ import { AppLinkButton } from "@/components/ui/AppButton";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate, setStoredCurrency } from "@/lib/format";
 import type { Category, DashboardSummary, ExchangeRate, Filters } from "@/types/poketto";
 
 const importantCurrencies = ["USD", "EUR", "SGD", "JPY"];
@@ -45,6 +45,7 @@ export default function DashboardPage() {
       .then(([dashboardData, categoryData]) => {
         setSummary(dashboardData);
         setCategories(categoryData.categories);
+        setStoredCurrency(dashboardData.currency ?? "IDR");
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Dashboard gagal dimuat."))
       .finally(() => setLoading(false));
@@ -60,6 +61,7 @@ export default function DashboardPage() {
   const visibleRates = orderedRates.length ? orderedRates : rates.slice(0, 5);
   const baseCurrency = visibleRates[0]?.base_currency ?? "IDR";
   const updatedAt = visibleRates.find((rate) => rate.fetched_at)?.fetched_at;
+  const currency = summary?.currency ?? "IDR";
 
   return (
     <AppLayout>
@@ -71,6 +73,10 @@ export default function DashboardPage() {
 
       <div className="grid gap-5">
         <AppCard>
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-base font-black text-slate-900">Filter dashboard</h2>
+            <p className="text-sm font-semibold text-slate-400">Atur periode, kategori, dan tipe transaksi yang ingin dilihat.</p>
+          </div>
           <FilterPanel filters={filters} categories={categories} onChange={setFilters} onReset={() => setFilters({})} />
         </AppCard>
 
@@ -80,14 +86,15 @@ export default function DashboardPage() {
         {summary && !loading ? (
           <>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Saldo" value={summary.balance} helper="Total pemasukan dikurangi pengeluaran" />
-              <StatCard label="Pemasukan" value={summary.total_income} tone="income" />
-              <StatCard label="Pengeluaran" value={summary.total_expense} tone="expense" />
+              <StatCard label="Saldo" value={summary.balance} currency={currency} helper="Total pemasukan dikurangi pengeluaran" />
+              <StatCard label="Pemasukan" value={summary.total_income} currency={currency} tone="income" />
+              <StatCard label="Pengeluaran" value={summary.total_expense} currency={currency} tone="expense" />
               <StatCard
                 label="Sisa budget bulanan"
                 value={Math.max(0, Number(summary.monthly_budget) - Number(summary.total_expense))}
+                currency={currency}
                 tone="warning"
-                helper={`Budget: ${formatCurrency(summary.monthly_budget)}`}
+                helper={`Budget: ${formatCurrency(summary.monthly_budget, currency)}`}
               />
             </div>
 
@@ -108,7 +115,9 @@ export default function DashboardPage() {
               <AppCard>
                 <div className="mb-4 flex items-center justify-between">
                   <h2 className="font-black text-slate-900">Tren pengeluaran</h2>
-                  <span className="text-xs font-bold text-slate-400">Periode terpilih</span>
+                  <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
+                    {summary.period?.label ?? "Periode terpilih"}
+                  </span>
                 </div>
                 <div className="flex h-64 items-end gap-2 rounded-2xl bg-slate-50 p-4">
                   {summary.expense_trend.length ? (
@@ -119,7 +128,7 @@ export default function DashboardPage() {
                           <div
                             className="w-full rounded-t-xl bg-poketto-500"
                             style={{ height: `${Math.max(8, (Number(item.total) / max) * 190)}px` }}
-                            title={formatCurrency(item.total)}
+                            title={formatCurrency(item.total, currency)}
                           />
                           <span className="text-[0.7rem] font-bold text-slate-400">{item.label ?? item.date.slice(5)}</span>
                         </div>
@@ -145,7 +154,7 @@ export default function DashboardPage() {
                           <div className="h-3 rounded-full bg-poketto-500" style={{ width: `${Math.min(100, budget.percentage)}%` }} />
                         </div>
                         <p className="mt-1 text-xs text-slate-400">
-                          {formatCurrency(budget.spent)} dari {formatCurrency(budget.monthly_budget)}
+                          {formatCurrency(budget.spent, currency)} dari {formatCurrency(budget.monthly_budget, currency)}
                         </p>
                       </div>
                     ))
@@ -154,6 +163,30 @@ export default function DashboardPage() {
                   )}
                 </div>
               </AppCard>
+            </div>
+
+            <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+              {summary.category_breakdown.length ? (
+                <AppCard>
+                  <h2 className="font-black text-slate-900">Visualisasi pengeluaran</h2>
+                  <div className="mt-4 grid gap-3">
+                    {summary.category_breakdown.map((item) => {
+                      const max = Math.max(...summary.category_breakdown.map((breakdown) => Number(breakdown.total || 0)), 1);
+                      return (
+                        <div key={item.category}>
+                          <div className="mb-1 flex justify-between gap-3 text-sm">
+                            <span className="truncate font-bold text-slate-700">{item.category}</span>
+                            <span className="font-black text-slate-900">{formatCurrency(item.total, currency)}</span>
+                          </div>
+                          <div className="h-3 rounded-full bg-slate-100">
+                            <div className="h-3 rounded-full bg-poketto-500" style={{ width: `${Math.max(6, (Number(item.total) / max) * 100)}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </AppCard>
+              ) : null}
             </div>
 
             <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">

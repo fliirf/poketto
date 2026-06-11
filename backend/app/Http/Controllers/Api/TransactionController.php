@@ -124,6 +124,17 @@ class TransactionController extends ApiController
         $income = $transactions->where('type', 'income')->sum('amount');
         $expense = $transactions->where('type', 'expense')->sum('amount');
         $period = $this->pdfPeriod($filters);
+        $settings = $request->user()->userSetting;
+        $currency = $settings?->currency ?? 'IDR';
+        $categoryBreakdown = $transactions
+            ->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'expense')
+            ->groupBy(fn (Transaction $transaction) => $transaction->category?->name ?? 'Tanpa kategori')
+            ->map(fn ($items, string $category) => [
+                'category' => $category,
+                'total' => (float) $items->sum('amount'),
+            ])
+            ->sortByDesc('total')
+            ->values();
 
         $pdf = Pdf::loadView('transactions.pdf', [
             'transactions' => $transactions,
@@ -131,6 +142,8 @@ class TransactionController extends ApiController
             'year' => $period['year'],
             'income' => $income,
             'expense' => $expense,
+            'currency' => $currency,
+            'categoryBreakdown' => $categoryBreakdown,
         ]);
 
         return $pdf->download($period['filename']);

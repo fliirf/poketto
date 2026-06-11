@@ -6,10 +6,14 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
 import { AppInput, Field } from "@/components/ui/AppInput";
+import { AppSelect } from "@/components/ui/AppSelect";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
+import { formatNumberInput, parseNumberInput, setStoredCurrency } from "@/lib/format";
 import type { UserSettings } from "@/types/poketto";
+
+const currencyOptions = ["IDR", "USD", "EUR", "SGD", "JPY"];
 
 export default function SettingsPage() {
   const toast = useToast();
@@ -17,11 +21,18 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [dailyBudgetInput, setDailyBudgetInput] = useState("");
+  const [monthlyBudgetInput, setMonthlyBudgetInput] = useState("");
 
   useEffect(() => {
     api
       .userSettings()
-      .then((data) => setSettings(data.user_settings))
+      .then((data) => {
+        setSettings(data.user_settings);
+        setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
+        setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
+        setStoredCurrency(data.user_settings.currency);
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Settings gagal dimuat."))
       .finally(() => setLoading(false));
   }, []);
@@ -38,6 +49,9 @@ export default function SettingsPage() {
         currency: settings.currency.toUpperCase()
       });
       setSettings(data.user_settings);
+      setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
+      setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
+      setStoredCurrency(data.user_settings.currency);
       toast.success("Settings berhasil disimpan.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Settings gagal disimpan.";
@@ -59,34 +73,56 @@ export default function SettingsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Daily budget">
                 <AppInput
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={settings.daily_budget}
-                  onChange={(event) => setSettings({ ...settings, daily_budget: Number(event.target.value) })}
+                  type="text"
+                  inputMode="numeric"
+                  value={dailyBudgetInput}
+                  placeholder="Contoh: 1.000.000"
+                  onChange={(event) => {
+                    const formatted = formatNumberInput(event.target.value);
+                    setDailyBudgetInput(formatted);
+                    setSettings({ ...settings, daily_budget: parseNumberInput(formatted) });
+                  }}
                 />
               </Field>
               <Field label="Monthly budget">
                 <AppInput
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={settings.monthly_budget}
-                  onChange={(event) => setSettings({ ...settings, monthly_budget: Number(event.target.value) })}
+                  type="text"
+                  inputMode="numeric"
+                  value={monthlyBudgetInput}
+                  placeholder="Contoh: 5.000.000"
+                  onChange={(event) => {
+                    const formatted = formatNumberInput(event.target.value);
+                    setMonthlyBudgetInput(formatted);
+                    setSettings({ ...settings, monthly_budget: parseNumberInput(formatted) });
+                  }}
                 />
               </Field>
               <Field label="Currency">
-                <AppInput value={settings.currency} maxLength={8} onChange={(event) => setSettings({ ...settings, currency: event.target.value })} />
+                <AppSelect
+                  value={settings.currency}
+                  onChange={(event) => setSettings({ ...settings, currency: event.target.value })}
+                >
+                  {currencyOptions.map((currency) => (
+                    <option key={currency} value={currency}>
+                      {currency}
+                    </option>
+                  ))}
+                </AppSelect>
               </Field>
-              <Field label="Budget warning threshold">
-                <AppInput
-                  type="number"
-                  min="1"
-                  max="99"
-                  step="1"
-                  value={settings.budget_warning_threshold ?? 80}
-                  onChange={(event) => setSettings({ ...settings, budget_warning_threshold: Number(event.target.value) })}
-                />
+              <Field label="Budget warning threshold (%)">
+                <div className="flex items-center rounded-2xl border border-slate-200 bg-white pr-4 focus-within:border-poketto-500 focus-within:ring-4 focus-within:ring-poketto-100">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="min-h-11 w-full rounded-2xl bg-transparent px-4 text-sm font-medium outline-none"
+                    value={settings.budget_warning_threshold ?? 80}
+                    onChange={(event) => {
+                      const value = Math.min(99, Number(event.target.value.replace(/\D/g, "")) || 1);
+                      setSettings({ ...settings, budget_warning_threshold: value });
+                    }}
+                  />
+                  <span className="text-sm font-black text-slate-400">%</span>
+                </div>
               </Field>
             </div>
             <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">

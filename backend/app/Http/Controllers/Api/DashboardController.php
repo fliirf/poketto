@@ -71,6 +71,12 @@ class DashboardController extends ApiController
             'balance' => (float) $totalIncome - (float) $totalExpense,
             'daily_budget' => (float) $settings->daily_budget,
             'monthly_budget' => (float) $settings->monthly_budget,
+            'currency' => $settings->currency ?? 'IDR',
+            'period' => [
+                'start_date' => $period['start']->toDateString(),
+                'end_date' => $period['end']->toDateString(),
+                'label' => $this->periodLabel($period['start'], $period['end'], $filters),
+            ],
             'budget_warning_threshold' => (float) ($settings->budget_warning_threshold ?? 80),
             'expense_trend' => $expenseTrend,
             'category_breakdown' => $categoryBreakdown,
@@ -259,5 +265,16 @@ class DashboardController extends ApiController
             'start' => Carbon::today()->startOfMonth(),
             'end' => Carbon::today()->endOfMonth(),
         ];
+    }
+
+    private function periodLabel(Carbon $start, Carbon $end, array $filters): string
+    {
+        if (! empty($filters['month'])) {
+            return $start->translatedFormat('F Y');
+        }
+
+        return $start->toDateString() === $end->toDateString()
+            ? $start->translatedFormat('d M Y')
+            : $start->translatedFormat('d M Y').' - '.$end->translatedFormat('d M Y');
     }
 }
