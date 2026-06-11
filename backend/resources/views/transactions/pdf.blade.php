@@ -29,22 +29,17 @@
             padding-bottom: 16px;
             width: 100%;
         }
-        .brand-mark {
-            background: #fff3e5;
-            border: 1px solid #ffd8ad;
-            border-radius: 16px;
-            color: #d76b13;
+        .brand-logo {
             display: inline-block;
-            font-size: 22px;
-            font-weight: 800;
-            height: 48px;
-            line-height: 46px;
-            text-align: center;
-            width: 48px;
+            height: 38px;
+            margin-top: 4px;
+            object-fit: contain;
+            vertical-align: top;
+            width: 162px;
         }
         .brand-copy {
             display: inline-block;
-            margin-left: 12px;
+            margin-left: 14px;
             vertical-align: top;
         }
         .brand-copy h1 {
@@ -262,9 +257,13 @@
         <table class="header">
             <tr>
                 <td>
-                    <span class="brand-mark">P</span>
+                    @if(! empty($logoPath) && file_exists($logoPath))
+                        <img class="brand-logo" src="{{ $logoPath }}" alt="Poketto">
+                    @else
+                        <strong style="color: #f28f33; font-size: 24px;">POKETTO</strong>
+                    @endif
                     <div class="brand-copy">
-                        <h1>Laporan Keuangan Poketto</h1>
+                        <h1>Laporan Keuangan</h1>
                         <p class="muted">Ringkasan transaksi, tren, dan komposisi pengeluaran.</p>
                     </div>
                 </td>

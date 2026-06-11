@@ -155,6 +155,7 @@ class TransactionController extends ApiController
             'currency' => $currency,
             'categoryBreakdown' => $categoryBreakdown,
             'dailyTrend' => $dailyTrend,
+            'logoPath' => public_path('POKETTO.png'),
         ]);
 
         return $pdf->download($period['filename']);
@@ -279,12 +280,10 @@ class TransactionController extends ApiController
             ];
         }
 
-        $now = now();
-
         return [
-            'label' => $now->translatedFormat('F'),
-            'year' => $now->format('Y'),
-            'filename' => 'Laporan_Poketto_'.$now->format('Y_m').'.pdf',
+            'label' => 'Semua periode',
+            'year' => '',
+            'filename' => 'Laporan_Poketto_Semua_Periode.pdf',
         ];
     }
 

@@ -15,6 +15,7 @@ import type { Category, DashboardSummary, ExchangeRate, Filters } from "@/types/
 
 const importantCurrencies = ["USD", "EUR", "SGD", "JPY"];
 const pieColors = ["#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#64748b", "#3b82f6"];
+type RateDirection = "idr-to-target" | "target-to-idr";
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
@@ -26,6 +27,7 @@ export default function DashboardPage() {
   const [ratesError, setRatesError] = useState("");
   const [ratesLoading, setRatesLoading] = useState(true);
   const [settingsCurrency, setSettingsCurrency] = useState("IDR");
+  const [rateDirection, setRateDirection] = useState<RateDirection>("idr-to-target");
 
   function loadRates() {
     setRatesLoading(true);
@@ -73,6 +75,12 @@ export default function DashboardPage() {
     ? (Number(summary.total_expense) / Number(summary.total_income)) * 100
     : 0;
   const categoryExpenseTotal = summary?.category_breakdown.reduce((total, item) => total + Number(item.total || 0), 0) ?? 0;
+  const idrComparisonAmount = 1000;
+  const formatRateAmount = (value: number, targetCurrency: string) =>
+    `${value.toLocaleString("id-ID", {
+      minimumFractionDigits: value > 0 && value < 1 ? 4 : 0,
+      maximumFractionDigits: targetCurrency === "JPY" ? 2 : 6
+    })} ${targetCurrency}`;
 
   return (
     <AppLayout>
@@ -378,16 +386,51 @@ export default function DashboardPage() {
                     Coba lagi
                   </button>
                 </div>
+                <div className="mt-4 grid grid-cols-2 rounded-2xl bg-slate-100 p-1 text-xs font-black text-slate-500">
+                  <button
+                    type="button"
+                    onClick={() => setRateDirection("idr-to-target")}
+                    className={`rounded-xl px-3 py-2 transition ${rateDirection === "idr-to-target" ? "bg-white text-poketto-700 shadow-sm" : "hover:text-slate-800"}`}
+                  >
+                    1.000 IDR ke kurs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRateDirection("target-to-idr")}
+                    className={`rounded-xl px-3 py-2 transition ${rateDirection === "target-to-idr" ? "bg-white text-poketto-700 shadow-sm" : "hover:text-slate-800"}`}
+                  >
+                    Kurs ke IDR
+                  </button>
+                </div>
                 <div className="mt-4 grid gap-3">
                   {ratesLoading ? (
                     <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500">Memuat kurs mata uang...</div>
                   ) : visibleRates.length ? (
-                    visibleRates.map((rate) => (
-                        <div key={rate.target_currency} className="flex justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-                          <span className="font-bold text-slate-600">{rate.target_currency}</span>
-                          <span className="font-black text-slate-900">{Number(rate.rate).toLocaleString("id-ID", { maximumFractionDigits: 8 })}</span>
+                    visibleRates.map((rate) => {
+                      const rateValue = Number(rate.rate || 0);
+                      const forwardValue = idrComparisonAmount * rateValue;
+                      const reverseValue = rateValue > 0 ? 1 / rateValue : 0;
+
+                      return (
+                        <div key={rate.target_currency} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-bold text-slate-600">
+                              {rateDirection === "idr-to-target" ? `${idrComparisonAmount.toLocaleString("id-ID")} IDR` : `1 ${rate.target_currency}`}
+                            </span>
+                            <span className="text-right font-black text-slate-900">
+                              {rateDirection === "idr-to-target"
+                                ? formatRateAmount(forwardValue, rate.target_currency)
+                                : formatCurrency(reverseValue, "IDR")}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs font-semibold text-slate-400">
+                            {rateDirection === "idr-to-target"
+                              ? `Perbandingan dari pecahan Rp ${idrComparisonAmount.toLocaleString("id-ID")}.`
+                              : `Kebalikan: 1 ${rate.target_currency} setara rupiah.`}
+                          </p>
                         </div>
-                      ))
+                      );
+                    })
                   ) : (
                     <EmptyState
                       title="Kurs mata uang belum tersedia"
