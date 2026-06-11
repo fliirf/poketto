@@ -66,7 +66,7 @@ export function TransactionForm({
     api
       .userSettings()
       .then((data) => {
-        const enabled = Boolean(data.user_settings.location_enabled);
+        const enabled = toBoolean(data.user_settings.location_enabled);
         setLocationEnabled(enabled);
         if (!enabled) {
           setLocationPayload({ location_lat: null, location_lng: null, location_name: null });
@@ -345,4 +345,12 @@ export function TransactionForm({
       </form>
     </AppCard>
   );
+}
+
+function toBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") return ["1", "true", "on", "yes"].includes(value.toLowerCase());
+
+  return false;
 }

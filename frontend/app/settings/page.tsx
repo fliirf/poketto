@@ -49,9 +49,12 @@ export default function SettingsPage() {
     try {
       const threshold = Math.max(1, Math.min(99, Number(thresholdInput || 80)));
       const data = await api.updateUserSettings({
-        ...settings,
+        daily_budget: parseNumberInput(dailyBudgetInput),
+        monthly_budget: parseNumberInput(monthlyBudgetInput),
         budget_warning_threshold: threshold,
-        currency: settings.currency.toUpperCase()
+        currency: settings.currency.toUpperCase(),
+        notification_enabled: toBoolean(settings.notification_enabled),
+        location_enabled: toBoolean(settings.location_enabled)
       });
       const userSettings = normalizeSettings(data.user_settings);
       setSettings(userSettings);
@@ -147,7 +150,7 @@ export default function SettingsPage() {
                 <input
                   type="checkbox"
                   className="h-5 w-5 accent-poketto-500"
-                  checked={Boolean(settings.notification_enabled)}
+                  checked={toBoolean(settings.notification_enabled)}
                   onChange={(event) => setSettings({ ...settings, notification_enabled: event.target.checked })}
                 />
               </label>
@@ -156,7 +159,7 @@ export default function SettingsPage() {
                 <input
                   type="checkbox"
                   className="h-5 w-5 accent-poketto-500"
-                  checked={Boolean(settings.location_enabled)}
+                  checked={toBoolean(settings.location_enabled)}
                   onChange={(event) => setSettings({ ...settings, location_enabled: event.target.checked })}
                 />
               </label>
@@ -178,6 +181,16 @@ function normalizeSettings(settings: UserSettings): UserSettings {
     ...settings,
     daily_budget: Number(settings.daily_budget || 0),
     monthly_budget: Number(settings.monthly_budget || 0),
-    budget_warning_threshold: Number(settings.budget_warning_threshold ?? 80)
+    budget_warning_threshold: Number(settings.budget_warning_threshold ?? 80),
+    notification_enabled: toBoolean(settings.notification_enabled),
+    location_enabled: toBoolean(settings.location_enabled)
   };
+}
+
+function toBoolean(value: unknown) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value === 1;
+  if (typeof value === "string") return ["1", "true", "on", "yes"].includes(value.toLowerCase());
+
+  return false;
 }
