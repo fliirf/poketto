@@ -29,11 +29,12 @@ export default function SettingsPage() {
     api
       .userSettings()
       .then((data) => {
-        setSettings(data.user_settings);
-        setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
-        setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
-        setThresholdInput(String(Math.round(Number(data.user_settings.budget_warning_threshold ?? 80))));
-        setStoredCurrency(data.user_settings.currency);
+        const userSettings = normalizeSettings(data.user_settings);
+        setSettings(userSettings);
+        setDailyBudgetInput(formatNumberInput(userSettings.daily_budget));
+        setMonthlyBudgetInput(formatNumberInput(userSettings.monthly_budget));
+        setThresholdInput(String(Math.round(Number(userSettings.budget_warning_threshold ?? 80))));
+        setStoredCurrency(userSettings.currency);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Settings gagal dimuat."))
       .finally(() => setLoading(false));
@@ -52,11 +53,12 @@ export default function SettingsPage() {
         budget_warning_threshold: threshold,
         currency: settings.currency.toUpperCase()
       });
-      setSettings(data.user_settings);
-      setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
-      setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
-      setThresholdInput(String(Math.round(Number(data.user_settings.budget_warning_threshold ?? threshold))));
-      setStoredCurrency(data.user_settings.currency);
+      const userSettings = normalizeSettings(data.user_settings);
+      setSettings(userSettings);
+      setDailyBudgetInput(formatNumberInput(userSettings.daily_budget));
+      setMonthlyBudgetInput(formatNumberInput(userSettings.monthly_budget));
+      setThresholdInput(String(Math.round(Number(userSettings.budget_warning_threshold ?? threshold))));
+      setStoredCurrency(userSettings.currency);
       toast.success("Settings berhasil disimpan.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Settings gagal disimpan.";
@@ -169,4 +171,13 @@ export default function SettingsPage() {
       ) : null}
     </AppLayout>
   );
+}
+
+function normalizeSettings(settings: UserSettings): UserSettings {
+  return {
+    ...settings,
+    daily_budget: Number(settings.daily_budget || 0),
+    monthly_budget: Number(settings.monthly_budget || 0),
+    budget_warning_threshold: Number(settings.budget_warning_threshold ?? 80)
+  };
 }
