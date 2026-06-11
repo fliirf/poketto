@@ -1,36 +1,30 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Category;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    // Menampilkan halaman register
-    public function showRegister() {
-        return view('auth.register');
-    }
-
-    // Memproses data register
-    public function register(Request $request) {
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:6|confirmed',
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
         ]);
 
-        // 1. Buat User baru
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
         ]);
 
-        // 2. DAFTAR KATEGORI DEFAULT
         $defaultCategories = [
             ['name' => 'Makanan & Minuman', 'type' => 'expense'],
             ['name' => 'Transportasi', 'type' => 'expense'],
@@ -40,7 +34,6 @@ class AuthController extends Controller
             ['name' => 'Bonus', 'type' => 'income'],
         ];
 
-        // 3. Simpan kategori ke database untuk user tersebut
         foreach ($defaultCategories as $category) {
             Category::create([
                 'user_id' => $user->id,
@@ -59,49 +52,52 @@ class AuthController extends Controller
             'location_enabled' => true,
         ]);
 
-        // 4. Langsung login
-        Auth::login($user);
-        $request->session()->put('api_token', $user->createToken('poketto-web')->plainTextToken);
+        $token = $user->createToken('poketto-web')->plainTextToken;
 
-        return redirect('/dashboard')->with('success', 'Selamat datang di Poketto! Kategori default telah disiapkan untukmu.');
+        return response()->json([
+            'message' => 'Registrasi berhasil.',
+            'user' => $user,
+            'token' => $token,
+        ], 201);
     }
 
-    // Menampilkan halaman login
-public function showLogin() {
-    return view('auth.login');
-}
+    public function login(Request $request)
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
 
-// Memproses login
-public function login(Request $request) {
-    // Validasi input
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
-    ]);
+        $user = User::where('email', $validated['email'])->first();
 
-    // Coba mencocokkan email & password di database
-    if (Auth::attempt($credentials)) {
-        $request->session()->regenerate(); // Untuk keamanan session
-        $request->session()->put('api_token', Auth::user()->createToken('poketto-web')->plainTextToken);
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['Email atau password salah.'],
+            ]);
+        }
 
-        // Redirect ke dashboard (nanti kita buat dashboard-nya)
-        return redirect()->intended('/dashboard');
+        $token = $user->createToken('poketto-web')->plainTextToken;
+
+        return response()->json([
+            'message' => 'Login berhasil.',
+            'user' => $user,
+            'token' => $token,
+        ]);
     }
 
-    // Jika gagal, balikkan ke login dengan pesan error
-    return back()->withErrors([
-        'email' => 'Email atau password salah.',
-    ])->onlyInput('email');
-}
-
-// Fitur Logout
-public function logout(Request $request) {
-    if ($request->user()) {
-        $request->user()->tokens()->where('name', 'poketto-web')->delete();
+    public function me(Request $request)
+    {
+        return response()->json([
+            'user' => $request->user(),
+        ]);
     }
-    Auth::logout();
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-    return redirect('/login');
-}
+
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()?->delete();
+
+        return response()->json([
+            'message' => 'Logout berhasil.',
+        ]);
+    }
 }
