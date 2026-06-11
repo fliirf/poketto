@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
@@ -41,7 +41,7 @@ export function TransactionForm({
   const toast = useToast();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [locationEnabled] = useState(true);
   const [locationStatus, setLocationStatus] = useState("");
   const [locationPayload, setLocationPayload] = useState<LocationPayload>(() => ({
     location_lat: transaction?.location_lat ?? null,
@@ -61,20 +61,6 @@ export function TransactionForm({
     () => categories.filter((category) => category.type === form.type),
     [categories, form.type]
   );
-
-  useEffect(() => {
-    api
-      .userSettings()
-      .then((data) => {
-        const enabled = toBoolean(data.user_settings.location_enabled);
-        setLocationEnabled(enabled);
-        if (!enabled) {
-          setLocationPayload({ location_lat: null, location_lng: null, location_name: null });
-          setLocationStatus("");
-        }
-      })
-      .catch(() => setLocationEnabled(false));
-  }, []);
 
   async function reverseGeocode(latitude: number, longitude: number) {
     try {
@@ -345,12 +331,4 @@ export function TransactionForm({
       </form>
     </AppCard>
   );
-}
-
-function toBoolean(value: unknown) {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value === 1;
-  if (typeof value === "string") return ["1", "true", "on", "yes"].includes(value.toLowerCase());
-
-  return false;
 }
