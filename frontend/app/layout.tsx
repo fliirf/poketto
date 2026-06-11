@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
-import { Oswald, Playfair_Display } from "next/font/google";
+import { Baloo_2, Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const baloo = Baloo_2({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-brand"
+});
+
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-heading"
 });
 
-const oswald = Oswald({
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-body"
@@ -32,7 +38,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
-      <body className={`${playfair.variable} ${oswald.variable}`}>
+      <body className={`${baloo.variable} ${jakarta.variable} ${inter.variable}`}>
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>
         </AuthProvider>
