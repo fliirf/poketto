@@ -121,19 +121,29 @@ class TransactionController extends ApiController
             ->orderBy('date')
             ->get();
 
-        $income = $transactions->where('type', 'income')->sum('amount');
-        $expense = $transactions->where('type', 'expense')->sum('amount');
+        $incomeTransactions = $transactions->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'income');
+        $expenseTransactions = $transactions->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'expense');
+        $income = $incomeTransactions->sum('amount');
+        $expense = $expenseTransactions->sum('amount');
         $period = $this->pdfPeriod($filters);
         $settings = $request->user()->userSetting;
         $currency = $settings?->currency ?? 'IDR';
-        $categoryBreakdown = $transactions
-            ->filter(fn (Transaction $transaction) => ($transaction->type ?: $transaction->category?->type) === 'expense')
+        $categoryBreakdown = $expenseTransactions
             ->groupBy(fn (Transaction $transaction) => $transaction->category?->name ?? 'Tanpa kategori')
             ->map(fn ($items, string $category) => [
                 'category' => $category,
                 'total' => (float) $items->sum('amount'),
             ])
             ->sortByDesc('total')
+            ->values();
+        $dailyTrend = $expenseTransactions
+            ->groupBy(fn (Transaction $transaction) => Carbon::parse($transaction->transaction_date ?? $transaction->date ?? now())->format('Y-m-d'))
+            ->map(fn ($items, string $date) => [
+                'date' => $date,
+                'label' => Carbon::parse($date)->format('d M'),
+                'total' => (float) $items->sum('amount'),
+            ])
+            ->sortBy('date')
             ->values();
 
         $pdf = Pdf::loadView('transactions.pdf', [
@@ -144,6 +154,7 @@ class TransactionController extends ApiController
             'expense' => $expense,
             'currency' => $currency,
             'categoryBreakdown' => $categoryBreakdown,
+            'dailyTrend' => $dailyTrend,
         ]);
 
         return $pdf->download($period['filename']);
