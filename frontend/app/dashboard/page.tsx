@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [ratesError, setRatesError] = useState("");
   const [ratesLoading, setRatesLoading] = useState(true);
+  const [settingsCurrency, setSettingsCurrency] = useState("IDR");
 
   function loadRates() {
     setRatesLoading(true);
@@ -42,11 +43,12 @@ export default function DashboardPage() {
   useEffect(() => {
     setLoading(true);
     setError("");
-    Promise.all([api.dashboard(filters), api.categories()])
-      .then(([dashboardData, categoryData]) => {
+    Promise.all([api.dashboard(filters), api.categories(), api.userSettings()])
+      .then(([dashboardData, categoryData, settingsData]) => {
         setSummary(dashboardData);
         setCategories(categoryData.categories);
-        setStoredCurrency(dashboardData.currency ?? "IDR");
+        setSettingsCurrency(settingsData.user_settings.currency);
+        setStoredCurrency(settingsData.user_settings.currency);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Dashboard gagal dimuat."))
       .finally(() => setLoading(false));
@@ -62,7 +64,11 @@ export default function DashboardPage() {
   const visibleRates = orderedRates.length ? orderedRates : rates.slice(0, 5);
   const baseCurrency = visibleRates[0]?.base_currency ?? "IDR";
   const updatedAt = visibleRates.find((rate) => rate.fetched_at)?.fetched_at;
-  const currency = summary?.currency ?? "IDR";
+  const currency = settingsCurrency || summary?.currency || "IDR";
+  const currencyRate = currency === "IDR"
+    ? 1
+    : Number(rates.find((rate) => rate.target_currency === currency && rate.base_currency === "IDR")?.rate ?? 0) || 1;
+  const displayAmount = (value: number | string) => Number(value || 0) * currencyRate;
   const expenseRatio = summary && Number(summary.total_income) > 0
     ? (Number(summary.total_expense) / Number(summary.total_income)) * 100
     : 0;
@@ -91,15 +97,15 @@ export default function DashboardPage() {
         {summary && !loading ? (
           <>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <StatCard label="Saldo" value={summary.balance} currency={currency} helper="Total pemasukan dikurangi pengeluaran" />
-              <StatCard label="Pemasukan" value={summary.total_income} currency={currency} tone="income" />
-              <StatCard label="Pengeluaran" value={summary.total_expense} currency={currency} tone="expense" />
+              <StatCard label="Saldo" value={displayAmount(summary.balance)} currency={currency} helper="Total pemasukan dikurangi pengeluaran" />
+              <StatCard label="Pemasukan" value={displayAmount(summary.total_income)} currency={currency} tone="income" />
+              <StatCard label="Pengeluaran" value={displayAmount(summary.total_expense)} currency={currency} tone="expense" />
               <StatCard
                 label="Sisa budget bulanan"
-                value={Math.max(0, Number(summary.monthly_budget) - Number(summary.total_expense))}
+                value={displayAmount(Math.max(0, Number(summary.monthly_budget) - Number(summary.total_expense)))}
                 currency={currency}
                 tone="warning"
-                helper={`Budget: ${formatCurrency(summary.monthly_budget, currency)}`}
+                helper={`Budget: ${formatCurrency(displayAmount(summary.monthly_budget), currency)}`}
               />
             </div>
 
@@ -140,11 +146,11 @@ export default function DashboardPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl bg-emerald-50 p-4">
                       <p className="text-sm font-bold text-emerald-700">Total pemasukan</p>
-                      <p className="mt-2 text-2xl font-black text-emerald-700">{formatCurrency(summary.total_income, currency)}</p>
+                      <p className="mt-2 text-2xl font-black text-emerald-700">{formatCurrency(displayAmount(summary.total_income), currency)}</p>
                     </div>
                     <div className="rounded-2xl bg-red-50 p-4">
                       <p className="text-sm font-bold text-red-700">Total pengeluaran</p>
-                      <p className="mt-2 text-2xl font-black text-red-700">{formatCurrency(summary.total_expense, currency)}</p>
+                      <p className="mt-2 text-2xl font-black text-red-700">{formatCurrency(displayAmount(summary.total_expense), currency)}</p>
                     </div>
                   </div>
 
@@ -195,7 +201,7 @@ export default function DashboardPage() {
                                   stroke="white"
                                   strokeWidth="2"
                                 >
-                                  <title>{`${item.category}: ${formatCurrency(item.total, currency)}`}</title>
+                                  <title>{`${item.category}: ${formatCurrency(displayAmount(item.total), currency)}`}</title>
                                 </path>
                               );
                             });
@@ -215,7 +221,7 @@ export default function DashboardPage() {
                               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: pieColors[index % pieColors.length] }} />
                               <span className="truncate font-bold text-slate-600">{item.category}</span>
                             </span>
-                            <span className="shrink-0 font-black text-slate-800">{formatCurrency(item.total, currency)}</span>
+                            <span className="shrink-0 font-black text-slate-800">{formatCurrency(displayAmount(item.total), currency)}</span>
                           </div>
                         ))}
                         {summary.category_breakdown.length > 6 ? (
@@ -236,7 +242,7 @@ export default function DashboardPage() {
                   <div>
                     <h2 className="font-black text-slate-900">Tren pengeluaran harian</h2>
                     <p className="text-sm font-semibold text-slate-400">
-                      Total periode ini: <span className="text-poketto-700">{formatCurrency(summary.total_expense, currency)}</span>
+                      Total periode ini: <span className="text-poketto-700">{formatCurrency(displayAmount(summary.total_expense), currency)}</span>
                     </p>
                   </div>
                   <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
@@ -252,15 +258,15 @@ export default function DashboardPage() {
                       return (
                         <div key={item.date} className="group relative flex flex-1 flex-col items-center gap-2">
                           <div className="pointer-events-none absolute -top-8 z-10 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                            {formatCurrency(item.total, currency)}
+                            {formatCurrency(displayAmount(item.total), currency)}
                           </div>
                           <span className={`text-[0.65rem] font-bold ${total > 0 ? "text-poketto-700" : "text-slate-300"}`}>
-                            {total > 0 ? formatCurrency(item.total, currency) : "-"}
+                            {total > 0 ? formatCurrency(displayAmount(item.total), currency) : "-"}
                           </span>
                           <div
                             className={`w-full rounded-t-xl transition hover:brightness-110 ${isHighest ? "bg-poketto-700" : "bg-poketto-500"} ${total > 0 ? "" : "opacity-35"}`}
                             style={{ height: `${Math.max(8, (total / max) * 210)}px` }}
-                            title={formatCurrency(item.total, currency)}
+                            title={formatCurrency(displayAmount(item.total), currency)}
                           />
                           <span className="text-[0.7rem] font-bold text-slate-400">{item.label ?? item.date.slice(5)}</span>
                         </div>
@@ -291,7 +297,7 @@ export default function DashboardPage() {
                             />
                           </div>
                           <p className="mt-1 text-xs text-slate-400">
-                            {formatCurrency(budget.spent, currency)} dari {formatCurrency(budget.monthly_budget, currency)}
+                            {formatCurrency(displayAmount(budget.spent), currency)} dari {formatCurrency(displayAmount(budget.monthly_budget), currency)}
                             {budget.percentage >= 100 ? (
                               <span className="ml-2 font-bold text-red-600">Melebihi budget.</span>
                             ) : budget.percentage >= summary.budget_warning_threshold ? (
@@ -325,7 +331,7 @@ export default function DashboardPage() {
                       <div key={item.category} className="rounded-2xl bg-slate-50 p-4">
                         <div className="mb-2 flex justify-between gap-3 text-sm">
                           <span className="truncate font-bold text-slate-700">{item.category}</span>
-                          <span className="font-black text-slate-900">{formatCurrency(item.total, currency)}</span>
+                          <span className="font-black text-slate-900">{formatCurrency(displayAmount(item.total), currency)}</span>
                         </div>
                         <div className="h-3 rounded-full bg-white">
                           <div
