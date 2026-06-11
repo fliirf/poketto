@@ -12,6 +12,18 @@ import { api, type TransactionPayload } from "@/lib/api";
 import { toDateTimeLocal } from "@/lib/format";
 import type { Category, Transaction, TransactionType } from "@/types/poketto";
 
+function formatRupiahInput(value: number | string | null | undefined) {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+
+  return new Intl.NumberFormat("id-ID").format(Number(digits));
+}
+
+function parseRupiahInput(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+}
+
 export function TransactionForm({
   categories,
   transaction
@@ -23,6 +35,7 @@ export function TransactionForm({
   const toast = useToast();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [amountInput, setAmountInput] = useState(() => formatRupiahInput(transaction?.amount));
   const [form, setForm] = useState<TransactionPayload>({
     type: transaction?.type ?? "expense",
     category_id: transaction?.category_id ?? null,
@@ -101,11 +114,15 @@ export function TransactionForm({
         </Field>
         <Field label="Nominal">
           <AppInput
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={form.amount || ""}
-            onChange={(event) => setForm({ ...form, amount: Number(event.target.value) })}
+            type="text"
+            inputMode="numeric"
+            value={amountInput}
+            placeholder="Contoh: 10.000"
+            onChange={(event) => {
+              const formatted = formatRupiahInput(event.target.value);
+              setAmountInput(formatted);
+              setForm({ ...form, amount: parseRupiahInput(formatted) });
+            }}
             required
           />
         </Field>
