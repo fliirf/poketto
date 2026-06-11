@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:poketto/core/debug/category_debug.dart';
 import 'package:poketto/core/helpers/json_helpers.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/data/repositories/app_repositories.dart';
 import 'package:poketto/providers/user_provider.dart';
+import 'package:poketto/ui/app_feedback.dart';
 import 'package:poketto/ui/app_theme.dart';
 import 'package:poketto/ui/app_widgets.dart';
 
@@ -24,6 +24,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   List<Map<String, dynamic>> _expenseCategories = [];
   bool _isLoading = true;
   bool _isSavingCategory = false;
+  bool _isDeletingCategory = false;
 
   @override
   void initState() {
@@ -48,10 +49,6 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       ]);
       final income = results[0];
       final expense = results[1];
-      logCategoryFlow(
-        'loadCategories userId=$userId income=${income.length} expense=${expense.length}',
-      );
-
       if (!mounted) return;
 
       setState(() {
@@ -69,12 +66,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kategori belum bisa dimuat. Coba lagi.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, 'Kategori belum bisa dimuat. Coba lagi.');
     }
   }
 
@@ -211,12 +203,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     final monthlyBudget =
         type == 'expense' ? _parseCurrency(budgetController.text) : null;
 
-    logCategoryFlow(
-      'submit tapped isEdit=$isEdit type=$type name="$name" budgetText="${budgetController.text}" monthlyBudget=$monthlyBudget',
-    );
-
     if (!formKey.currentState!.validate()) {
-      logCategoryFlow('submit blocked by validation name="$name"');
       return;
     }
 
@@ -240,34 +227,25 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               userId: userId,
             );
 
-      logCategoryFlow('repository result=$result');
-
       if (!mounted) return;
       Navigator.pop(context);
 
       if (result > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEdit
-                ? 'Kategori berhasil diupdate'
-                : 'Kategori berhasil ditambahkan'),
-            backgroundColor: Colors.green,
-          ),
+        AppFeedback.success(
+          context,
+          isEdit
+              ? 'Kategori berhasil diperbarui.'
+              : 'Kategori berhasil ditambahkan.',
         );
-        logCategoryFlow('refresh called after successful save');
         _loadCategories();
       } else {
         _showCategoryError('Kategori gagal disimpan.');
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      logCategoryFlow(
-        'submit ApiException status=${e.statusCode} message=${e.message}',
-      );
       _showCategoryError(e.userMessage);
     } catch (e) {
       if (!mounted) return;
-      logCategoryFlow('submit unexpected error=$e');
       _showCategoryError('Kategori gagal disimpan.');
     } finally {
       if (mounted) setState(() => _isSavingCategory = false);
@@ -304,6 +282,9 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     );
 
     if (confirm != true) return;
+    if (_isDeletingCategory) return;
+
+    setState(() => _isDeletingCategory = true);
 
     try {
       final result = await AppRepositories.categories.deleteCategoryForUi(
@@ -313,12 +294,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       if (!mounted) return;
 
       if (result > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Kategori berhasil dihapus'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppFeedback.success(context, 'Kategori berhasil dihapus.');
         _loadCategories();
       } else {
         _showCategoryError('Kategori masih digunakan dalam transaksi.');
@@ -329,13 +305,13 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
     } catch (_) {
       if (!mounted) return;
       _showCategoryError('Kategori gagal dihapus.');
+    } finally {
+      if (mounted) setState(() => _isDeletingCategory = false);
     }
   }
 
   void _showCategoryError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+    AppFeedback.error(context, message);
   }
 
   void _formatBudgetField(TextEditingController controller) {
@@ -489,12 +465,16 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           IconButton(
-            onPressed: () => _showCategoryDialog(type, category: category),
+            onPressed: _isDeletingCategory
+                ? null
+                : () => _showCategoryDialog(type, category: category),
             icon: const Icon(Icons.edit_outlined, size: 20),
             color: AppColors.primary,
           ),
           IconButton(
-            onPressed: () => _showDeleteCategoryDialog(category),
+            onPressed: _isDeletingCategory
+                ? null
+                : () => _showDeleteCategoryDialog(category),
             icon: const Icon(Icons.delete_outline, size: 20),
             color: Colors.red,
           ),

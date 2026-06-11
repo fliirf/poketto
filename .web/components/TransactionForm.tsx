@@ -7,6 +7,7 @@ import { AppCard } from "@/components/ui/AppCard";
 import { AppInput, AppTextarea, Field } from "@/components/ui/AppInput";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { ErrorState } from "@/components/ui/States";
+import { useToast } from "@/components/ui/ToastProvider";
 import { api, type TransactionPayload } from "@/lib/api";
 import { toDateTimeLocal } from "@/lib/format";
 import type { Category, Transaction, TransactionType } from "@/types/poketto";
@@ -19,6 +20,7 @@ export function TransactionForm({
   transaction?: Transaction;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<TransactionPayload>({
@@ -35,23 +37,42 @@ export function TransactionForm({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setSaving(true);
+    if (saving) return;
     setError("");
     if (!form.category_id) {
-      setError("Pilih kategori transaksi terlebih dahulu.");
-      setSaving(false);
+      const message = "Kategori wajib dipilih.";
+      setError(message);
+      toast.error(message);
       return;
     }
+    if (!form.amount || Number(form.amount) <= 0) {
+      const message = "Nominal wajib diisi.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    if (!form.transaction_date) {
+      const message = "Tanggal transaksi wajib diisi.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
+    setSaving(true);
     try {
       if (transaction) {
         await api.updateTransaction(transaction.id, form);
+        toast.success("Transaksi berhasil diperbarui.");
       } else {
         await api.createTransaction(form);
+        toast.success(form.type === "income" ? "Berhasil tambah pemasukan." : "Berhasil tambah pengeluaran.");
       }
       router.push("/transactions");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Transaksi gagal disimpan.");
+      const message = err instanceof Error ? err.message : "Gagal menyimpan transaksi. Periksa kembali data yang diisi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { CategoryForm } from "@/components/CategoryForm";
@@ -9,30 +9,50 @@ import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
+import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import type { Category } from "@/types/poketto";
 
 export default function CategoriesPage() {
+  const toast = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    api
-      .categories()
-      .then((data) => setCategories(data.categories))
-      .catch((err) => setError(err instanceof Error ? err.message : "Kategori gagal dimuat."))
-      .finally(() => setLoading(false));
+  const loadCategories = useCallback(async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await api.categories();
+      setCategories(data.categories);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kategori gagal dimuat.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
   async function deleteCategory(id: number) {
+    if (deletingId) return;
+    setDeletingId(id);
+    setError("");
     try {
       await api.deleteCategory(id);
       setCategories((current) => current.filter((category) => category.id !== id));
+      toast.success("Kategori berhasil dihapus.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kategori gagal dihapus.");
+      const message = err instanceof Error ? err.message : "Kategori gagal dihapus.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -40,7 +60,7 @@ export default function CategoriesPage() {
     <AppLayout>
       <PageHeader title="Kategori & Budget" description="Kelola kategori pemasukan, pengeluaran, dan budget bulanan." />
       <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-        <CategoryForm />
+        <CategoryForm onSaved={loadCategories} />
         <AppCard>
           {loading ? <LoadingState /> : null}
           {error ? <ErrorState message={error} /> : null}
@@ -68,12 +88,13 @@ export default function CategoriesPage() {
                         type="button"
                         variant="danger"
                         className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                        disabled={deletingId === category.id}
                         onClick={() => {
                           deleteCategory(category.id);
                           setPendingDeleteId(null);
                         }}
                       >
-                        Konfirmasi
+                        {deletingId === category.id ? "Menghapus..." : "Konfirmasi"}
                       </AppButton>
                       <AppButton
                         type="button"
@@ -89,6 +110,7 @@ export default function CategoriesPage() {
                       type="button"
                       variant="danger"
                       className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                      disabled={Boolean(deletingId)}
                       onClick={() => setPendingDeleteId(category.id)}
                     >
                       Hapus

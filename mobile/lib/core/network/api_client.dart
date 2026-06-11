@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:poketto/core/config/api_config.dart';
-import 'package:poketto/core/debug/category_debug.dart';
 import 'package:poketto/core/helpers/json_helpers.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/core/storage/token_storage.dart';
@@ -88,20 +87,9 @@ class ApiClient {
         request.body = jsonEncode(body);
       }
 
-      if (path.contains('categories')) {
-        logCategoryFlow(
-          '$method ${request.url} token=${request.headers.containsKey('Authorization')} payload=${request.body}',
-        );
-      }
-
       final streamed =
           await _client.send(request).timeout(ApiConfig.requestTimeout);
       final response = await http.Response.fromStream(streamed);
-      if (path.contains('categories')) {
-        logCategoryFlow(
-          '$method ${request.url} status=${response.statusCode} body=${response.body}',
-        );
-      }
       return _handleResponse(response);
     } on TimeoutException catch (error) {
       throw ApiException(message: 'Request timeout', cause: error);
@@ -141,16 +129,16 @@ class ApiClient {
     final map = asStringDynamicMap(decoded);
     if (map.isEmpty) return null;
 
-    for (final key in const ['message', 'error', 'detail']) {
-      final value = readString(map[key]);
-      if (value != null) return value;
-    }
-
     final errors = map['errors'];
     if (errors is Map && errors.isNotEmpty) {
       final first = errors.values.first;
       if (first is List && first.isNotEmpty) return first.first.toString();
       return first.toString();
+    }
+
+    for (final key in const ['message', 'error', 'detail']) {
+      final value = readString(map[key]);
+      if (value != null) return value;
     }
 
     return null;

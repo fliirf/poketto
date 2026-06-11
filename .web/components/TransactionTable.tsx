@@ -11,10 +11,12 @@ import type { Transaction } from "@/types/poketto";
 
 export function TransactionTable({
   transactions,
-  onDelete
+  onDelete,
+  deletingId
 }: {
   transactions: Transaction[];
-  onDelete?: (id: number) => void;
+  onDelete?: (id: number) => Promise<void> | void;
+  deletingId?: number | null;
 }) {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
@@ -55,12 +57,13 @@ export function TransactionTable({
                         type="button"
                         variant="danger"
                         className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                        disabled={deletingId === transaction.id}
                         onClick={() => {
                           onDelete(transaction.id);
                           setPendingDeleteId(null);
                         }}
                       >
-                        Konfirmasi
+                        {deletingId === transaction.id ? "Menghapus..." : "Konfirmasi"}
                       </AppButton>
                       <AppButton
                         type="button"
@@ -76,6 +79,7 @@ export function TransactionTable({
                       type="button"
                       variant="danger"
                       className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                      disabled={Boolean(deletingId)}
                       onClick={() => setPendingDeleteId(transaction.id)}
                     >
                       Hapus

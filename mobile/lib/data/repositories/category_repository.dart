@@ -1,5 +1,4 @@
 import 'package:poketto/core/helpers/json_helpers.dart';
-import 'package:poketto/core/debug/category_debug.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/core/storage/budget_settings_storage.dart';
 import 'package:poketto/core/storage/token_storage.dart';
@@ -38,9 +37,6 @@ class CategoryRepository {
           userId: userId,
         );
       } on ApiException catch (error) {
-        logCategoryFlow(
-          'getCategoriesForUi remote error status=${error.statusCode} message=${error.message}',
-        );
         if (!error.canUseLocalFallback) rethrow;
       }
     }
@@ -55,9 +51,6 @@ class CategoryRepository {
     double? monthlyBudget,
     int? userId,
   }) async {
-    logCategoryFlow(
-      'createCategoryForUi name="$name" type=$type monthlyBudget=$monthlyBudget',
-    );
     if (await _hasRemoteSession()) {
       final payload = _categoryPayload(
         name: name,
@@ -67,7 +60,6 @@ class CategoryRepository {
 
       try {
         final created = await _categoryService.createCategory(payload);
-        logCategoryFlow('createCategoryForUi created id=${created.id}');
         if (created.id > 0 && monthlyBudget != null && monthlyBudget > 0) {
           await _budgetSettingsStorage.setCategoryMonthlyBudget(
             created.id,

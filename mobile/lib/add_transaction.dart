@@ -9,6 +9,7 @@ import 'package:poketto/data/services/location_service.dart';
 import 'package:poketto/database/database_helper.dart';
 import 'package:poketto/providers/user_provider.dart';
 import 'package:poketto/manage_categories_page.dart';
+import 'package:poketto/ui/app_feedback.dart';
 import 'package:poketto/ui/app_theme.dart';
 import 'package:poketto/ui/app_widgets.dart';
 
@@ -125,7 +126,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         }
       });
     } catch (e) {
-      print('Error loading categories: $e');
+      if (!mounted) return;
+      AppFeedback.error(context, 'Kategori belum bisa dimuat. Coba lagi.');
     }
   }
 
@@ -145,28 +147,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         activeTargets = targets;
       });
     } catch (e) {
-      print('Error loading targets: $e');
+      if (!mounted) return;
+      AppFeedback.error(context, 'Target belum bisa dimuat. Coba lagi.');
     }
   }
 
   Future<void> _saveTransaction() async {
     if (_amountController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Jumlah tidak boleh kosong!'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, 'Nominal wajib diisi.');
       return;
     }
 
     if (selectedCategoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pilih kategori terlebih dahulu!'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, 'Kategori wajib dipilih.');
       return;
     }
 
@@ -185,11 +178,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       final description = _noteController.text.isEmpty
           ? 'Transaksi ${isIncome ? "pemasukan" : "pengeluaran"}'
           : _noteController.text;
-      debugPrint('Selected categoryId: $selectedCategoryId');
-      debugPrint(
-        'Submitting transaction type=${isIncome ? 'income' : 'expense'} amount=$amount categoryId=$selectedCategoryId budgetId=$selectedBudgetId',
-      );
-
       TransactionLocation? location;
       if (!isIncome && _attachLocation) {
         if (mounted) {
@@ -265,21 +253,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
       if (result > 0) {
         await _checkBudgetNotifications();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isEditMode
-                ? 'Transaksi berhasil diupdate!'
-                : 'Transaksi berhasil disimpan!'),
-            backgroundColor: Colors.green,
-          ),
+        AppFeedback.success(
+          context,
+          isEditMode
+              ? 'Transaksi berhasil diperbarui.'
+              : isIncome
+                  ? 'Berhasil tambah pemasukan.'
+                  : 'Berhasil tambah pengeluaran.',
         );
         if (_locationMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_locationMessage!),
-              backgroundColor: AppColors.primary,
-            ),
-          );
+          AppFeedback.info(context, _locationMessage!,
+              color: AppColors.primary);
         }
         Navigator.pop(context, true);
       } else {
@@ -287,28 +271,14 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       }
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.userMessage),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, e.userMessage);
     } on FormatException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.message),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, e.message);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context,
+          'Gagal menyimpan transaksi. Periksa kembali data yang diisi.');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -354,24 +324,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
       if (result > 0) {
         await _checkBudgetNotifications();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transaksi berhasil dihapus!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppFeedback.success(context, 'Transaksi berhasil dihapus.');
         Navigator.pop(context, true);
       } else {
         throw Exception('Gagal menghapus transaksi');
       }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      AppFeedback.error(context, e.userMessage);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(context, 'Transaksi gagal dihapus. Coba lagi nanti.');
     } finally {
       if (mounted) setState(() => isLoading = false);
     }
@@ -402,7 +365,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     try {
       return await AppRepositories.location.getCurrentTransactionLocation();
     } catch (error) {
-      debugPrint('Location selected error: $error');
       return const TransactionLocation(
         message:
             'Lokasi tidak berhasil diambil. Transaksi tetap disimpan tanpa lokasi.',
@@ -440,7 +402,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         dailyLimit: dailyLimit,
       );
     } catch (error) {
-      debugPrint('Budget notification check skipped: $error');
+      return;
     }
   }
 

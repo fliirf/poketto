@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:poketto/data/repositories/app_repositories.dart';
 import 'package:poketto/providers/user_provider.dart';
+import 'package:poketto/ui/app_feedback.dart';
 import 'package:poketto/ui/app_theme.dart';
 import 'package:poketto/ui/app_widgets.dart';
 
@@ -53,15 +54,10 @@ class _BudgetSettingsPageState extends State<BudgetSettingsPage> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading budget settings: $e');
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pengaturan budget belum bisa dimuat. Coba lagi.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppFeedback.error(
+          context, 'Pengaturan budget belum bisa dimuat. Coba lagi.');
     }
   }
 
@@ -84,13 +80,11 @@ class _BudgetSettingsPageState extends State<BudgetSettingsPage> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Budget harian berhasil disimpan.'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      AppFeedback.success(context, 'Budget harian berhasil disimpan.');
       Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      AppFeedback.error(context, 'Settings gagal disimpan. Coba lagi nanti.');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Services\PokettoApiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Throwable;
 
 class CategoryController extends Controller
 {
@@ -23,21 +24,25 @@ class CategoryController extends Controller
     public function store(Request $request)
     {
         // 1. Validasi input
-        $request->validate([
-            'name' => 'required|string|max:50',
-            'type' => 'required|in:income,expense',
-            'monthly_budget' => 'nullable|numeric|min:0',
-        ]);
+        $validated = $request->validate($this->categoryRules(maxName: 50), $this->categoryMessages());
 
         // 2. Simpan ke database dengan user_id yang sedang login
-        app(PokettoApiClient::class)->post('/categories', [
-            'name' => $request->name,
-            'type' => $request->type,
-            'monthly_budget' => $request->monthly_budget ?? 0,
-        ]);
+        try {
+            app(PokettoApiClient::class)->post('/categories', [
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'monthly_budget' => $validated['monthly_budget'] ?? 0,
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Kategori gagal disimpan. Periksa kembali data yang diisi.');
+        }
 
         // 3. Redirect kembali ke halaman sebelumnya dengan pesan sukses
-        return redirect()->back()->with('success', 'Kategori baru berhasil ditambahkan!');
+        return redirect()->back()->with('success', 'Kategori berhasil ditambahkan.');
     }
 
     public function edit(Category $category)
@@ -51,17 +56,21 @@ class CategoryController extends Controller
     {
         $this->authorizeCategory($category);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:100',
-            'type' => 'required|in:income,expense',
-            'monthly_budget' => 'nullable|numeric|min:0',
-        ]);
+        $validated = $request->validate($this->categoryRules(), $this->categoryMessages());
 
-        app(PokettoApiClient::class)->put('/categories/'.$category->id, [
-            'name' => $validated['name'],
-            'type' => $validated['type'],
-            'monthly_budget' => $validated['monthly_budget'] ?? 0,
-        ]);
+        try {
+            app(PokettoApiClient::class)->put('/categories/'.$category->id, [
+                'name' => $validated['name'],
+                'type' => $validated['type'],
+                'monthly_budget' => $validated['monthly_budget'] ?? 0,
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Kategori gagal disimpan. Periksa kembali data yang diisi.');
+        }
 
         return redirect()->route('categories.index')->with('success', 'Kategori berhasil diperbarui.');
     }
@@ -69,7 +78,13 @@ class CategoryController extends Controller
     public function destroy(Category $category)
     {
         $this->authorizeCategory($category);
-        app(PokettoApiClient::class)->delete('/categories/'.$category->id);
+        try {
+            app(PokettoApiClient::class)->delete('/categories/'.$category->id);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'Kategori gagal dihapus. Coba lagi nanti.');
+        }
 
         return redirect()->route('categories.index')->with('success', 'Kategori berhasil dihapus.');
     }
@@ -77,5 +92,26 @@ class CategoryController extends Controller
     private function authorizeCategory(Category $category): void
     {
         abort_if($category->user_id !== Auth::id(), 403);
+    }
+
+    private function categoryRules(int $maxName = 100): array
+    {
+        return [
+            'name' => 'required|string|max:'.$maxName,
+            'type' => 'required|in:income,expense',
+            'monthly_budget' => 'nullable|numeric|min:0',
+        ];
+    }
+
+    private function categoryMessages(): array
+    {
+        return [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.max' => 'Nama kategori terlalu panjang.',
+            'type.required' => 'Tipe kategori wajib dipilih.',
+            'type.in' => 'Tipe kategori tidak valid.',
+            'monthly_budget.numeric' => 'Budget bulanan harus berupa angka.',
+            'monthly_budget.min' => 'Budget bulanan tidak boleh negatif.',
+        ];
     }
 }

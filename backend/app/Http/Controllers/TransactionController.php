@@ -8,6 +8,7 @@ use App\Services\PokettoApiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Throwable;
 
 class TransactionController extends Controller
 {
@@ -20,23 +21,29 @@ class TransactionController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'amount' => 'required|numeric|min:1',
-            'type' => 'required|in:income,expense',
-            'transaction_date' => 'required|date',
-            'description' => 'nullable|string|max:255',
-        ]);
+        $validated = $request->validate($this->transactionRules(), $this->transactionMessages());
 
-        app(PokettoApiClient::class)->post('/transactions', [
-            'type' => $validated['type'],
-            'category_id' => $validated['category_id'],
-            'amount' => $validated['amount'],
-            'transaction_date' => $validated['transaction_date'],
-            'description' => $validated['description'] ?? null,
-        ]);
+        try {
+            app(PokettoApiClient::class)->post('/transactions', [
+                'type' => $validated['type'],
+                'category_id' => $validated['category_id'],
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['transaction_date'],
+                'description' => $validated['description'] ?? null,
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
 
-        return redirect()->route('dashboard')->with('success', 'Mantap! Transaksi kamu berhasil dicatat.');
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan transaksi. Periksa kembali data yang diisi.');
+        }
+
+        $message = $validated['type'] === 'income'
+            ? 'Berhasil tambah pemasukan.'
+            : 'Berhasil tambah pengeluaran.';
+
+        return redirect()->route('dashboard')->with('success', $message);
     }
 
     public function index(Request $request)
@@ -79,9 +86,15 @@ class TransactionController extends Controller
             abort(403);
         }
 
-        app(PokettoApiClient::class)->delete('/transactions/'.$transaction->id);
+        try {
+            app(PokettoApiClient::class)->delete('/transactions/'.$transaction->id);
+        } catch (Throwable $exception) {
+            report($exception);
 
-        return redirect()->route('dashboard')->with('success', 'Transaksi berhasil dihapus!');
+            return back()->with('error', 'Transaksi gagal dihapus. Coba lagi nanti.');
+        }
+
+        return redirect()->route('dashboard')->with('success', 'Transaksi berhasil dihapus.');
     }
 
     public function edit(Transaction $transaction)
@@ -97,23 +110,25 @@ class TransactionController extends Controller
     {
         if ($transaction->user_id !== auth()->id()) { abort(403); }
 
-        $request->validate([
-            'amount' => 'required|numeric',
-            'category_id' => 'required|exists:categories,id',
-            'type' => 'required|in:income,expense',
-            'transaction_date' => 'required|date',
-            'description' => 'nullable|string|max:255',
-        ]);
+        $validated = $request->validate($this->transactionRules(), $this->transactionMessages());
 
-        app(PokettoApiClient::class)->put('/transactions/'.$transaction->id, [
-            'type' => $request->type,
-            'category_id' => $request->category_id,
-            'amount' => $request->amount,
-            'transaction_date' => $request->transaction_date,
-            'description' => $request->description,
-        ]);
+        try {
+            app(PokettoApiClient::class)->put('/transactions/'.$transaction->id, [
+                'type' => $validated['type'],
+                'category_id' => $validated['category_id'],
+                'amount' => $validated['amount'],
+                'transaction_date' => $validated['transaction_date'],
+                'description' => $validated['description'] ?? null,
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
 
-        return redirect()->route('dashboard')->with('success', 'Transaksi berhasil diperbarui!');
+            return back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan transaksi. Periksa kembali data yang diisi.');
+        }
+
+        return redirect()->route('dashboard')->with('success', 'Transaksi berhasil diperbarui.');
     }
 
 public function report(Request $request)
@@ -188,5 +203,32 @@ private function filterParams(Request $request): array
         'type',
         'category_id',
     ]))->filter(fn ($value) => $value !== null && $value !== '')->all();
+}
+
+private function transactionRules(): array
+{
+    return [
+        'category_id' => 'required|exists:categories,id',
+        'amount' => 'required|numeric|min:1',
+        'type' => 'required|in:income,expense',
+        'transaction_date' => 'required|date',
+        'description' => 'nullable|string|max:255',
+    ];
+}
+
+private function transactionMessages(): array
+{
+    return [
+        'amount.required' => 'Nominal wajib diisi.',
+        'amount.numeric' => 'Nominal harus berupa angka.',
+        'amount.min' => 'Nominal harus lebih dari 0.',
+        'category_id.required' => 'Kategori wajib dipilih.',
+        'category_id.exists' => 'Kategori yang dipilih tidak valid.',
+        'transaction_date.required' => 'Tanggal transaksi wajib diisi.',
+        'transaction_date.date' => 'Tanggal transaksi tidak valid.',
+        'type.required' => 'Tipe transaksi wajib dipilih.',
+        'type.in' => 'Tipe transaksi tidak valid.',
+        'description.max' => 'Catatan maksimal 255 karakter.',
+    ];
 }
 }

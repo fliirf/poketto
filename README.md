@@ -57,6 +57,98 @@ EXCHANGE_RATE_API_KEY=your_exchange_rate_api_key
 
 Without a key or stored rates, the dashboard keeps loading and shows an honest "Kurs mata uang belum tersedia" fallback.
 
+## Deploy Backend Laravel ke Render Free + Supabase PostgreSQL
+
+Backend Laravel bisa tetap memakai SQLite untuk local development, tetapi production di Render harus memakai PostgreSQL dari Supabase karena filesystem Render Free tidak persistent.
+
+### 1. Siapkan Supabase PostgreSQL
+
+1. Buat project Supabase.
+2. Buka Project Settings > Database.
+3. Ambil direct connection PostgreSQL host, port, database, username, dan password.
+4. Pakai direct connection lebih dulu untuk backend Render. Jika memakai Transaction Pooler, set `DB_PGSQL_DISABLE_PREPARES=true` di Render.
+5. Jangan pernah expose Supabase service role key ke Next.js atau mobile. Laravel backend saja yang mengakses database.
+
+### 2. Buat Web Service di Render
+
+- Type: Web Service
+- Root Directory: `backend`
+- Runtime: PHP
+- Build Command:
+
+```bash
+composer install --no-dev --optimize-autoloader && php artisan config:clear && php artisan route:clear && php artisan view:clear
+```
+
+- Start Command:
+
+```bash
+php artisan migrate --force && php artisan serve --host 0.0.0.0 --port $PORT
+```
+
+### 3. Environment Variables Render
+
+```env
+APP_NAME=Poketto
+APP_ENV=production
+APP_KEY=base64:generate-this-locally-or-in-render-shell
+APP_DEBUG=false
+APP_URL=https://your-render-service.onrender.com
+FRONTEND_WEB_URL=https://your-nextjs-frontend-domain
+
+DB_CONNECTION=pgsql
+DB_HOST=db.your-project-ref.supabase.co
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=postgres
+DB_PASSWORD=your-supabase-database-password
+DB_SSLMODE=require
+DB_SCHEMA=public
+DB_PGSQL_DISABLE_PREPARES=false
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+LOG_CHANNEL=stack
+LOG_LEVEL=error
+EXCHANGE_RATE_API_KEY=
+```
+
+Generate `APP_KEY` sekali dengan:
+
+```bash
+cd backend
+php artisan key:generate --show
+```
+
+Jika Render memakai Supabase Transaction Pooler, ubah:
+
+```env
+DB_HOST=aws-xxx.pooler.supabase.com
+DB_PORT=6543
+DB_USERNAME=postgres.your-project-ref
+DB_PGSQL_DISABLE_PREPARES=true
+```
+
+### 4. Local Database
+
+Local development tetap bisa memakai SQLite:
+
+```env
+DB_CONNECTION=sqlite
+DB_DATABASE=database/database.sqlite
+```
+
+Lalu jalankan:
+
+```bash
+cd backend
+composer install
+php artisan config:clear
+php artisan migrate:fresh --seed
+php artisan test
+```
+
 ## Next.js Web Setup
 
 ```bash

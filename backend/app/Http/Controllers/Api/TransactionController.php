@@ -52,9 +52,13 @@ class TransactionController extends ApiController
             'location_name' => $validated['location_name'] ?? $request->input('address'),
         ]);
 
+        $typeMessage = $validated['type'] === 'income'
+            ? 'Berhasil tambah pemasukan.'
+            : 'Berhasil tambah pengeluaran.';
+
         return $this->success([
             'transaction' => $this->serializeTransaction($transaction->load('category')),
-        ], 'Transaction created', 201);
+        ], $typeMessage, 201);
     }
 
     public function show(Request $request, Transaction $transaction)
@@ -87,7 +91,7 @@ class TransactionController extends ApiController
 
         return $this->success([
             'transaction' => $this->serializeTransaction($transaction->fresh()->load('category')),
-        ], 'Transaction updated');
+        ], 'Transaksi berhasil diperbarui.');
     }
 
     public function destroy(Request $request, Transaction $transaction)
@@ -95,7 +99,7 @@ class TransactionController extends ApiController
         $this->authorizeTransaction($request, $transaction);
         $transaction->delete();
 
-        return $this->success(null, 'Transaction deleted');
+        return $this->success(null, 'Transaksi berhasil dihapus.');
     }
 
     public function exportPdf(Request $request)
@@ -145,6 +149,22 @@ class TransactionController extends ApiController
             'location_lat' => ['nullable', 'numeric', 'between:-90,90'],
             'location_lng' => ['nullable', 'numeric', 'between:-180,180'],
             'location_name' => ['nullable', 'string', 'max:255'],
+        ], [
+            'type.required' => 'Tipe transaksi wajib dipilih.',
+            'type.in' => 'Tipe transaksi tidak valid.',
+            'category_id.required' => 'Kategori wajib dipilih.',
+            'category_id.exists' => 'Kategori yang dipilih tidak valid.',
+            'amount.required' => 'Nominal wajib diisi.',
+            'amount.numeric' => 'Nominal harus berupa angka.',
+            'amount.min' => 'Nominal harus lebih dari 0.',
+            'transaction_date.required' => 'Tanggal transaksi wajib diisi.',
+            'transaction_date.date' => 'Tanggal transaksi tidak valid.',
+            'description.max' => 'Catatan maksimal 255 karakter.',
+            'location_lat.numeric' => 'Latitude lokasi tidak valid.',
+            'location_lat.between' => 'Latitude lokasi tidak valid.',
+            'location_lng.numeric' => 'Longitude lokasi tidak valid.',
+            'location_lng.between' => 'Longitude lokasi tidak valid.',
+            'location_name.max' => 'Nama lokasi maksimal 255 karakter.',
         ]);
     }
 

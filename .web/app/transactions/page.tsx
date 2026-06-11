@@ -10,10 +10,12 @@ import { AppLinkButton } from "@/components/ui/AppButton";
 import { AppInput } from "@/components/ui/AppInput";
 import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
 import type { Category, Filters, Transaction } from "@/types/poketto";
 
 export default function TransactionsPage() {
+  const toast = useToast();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState<Filters>({});
@@ -21,6 +23,7 @@ export default function TransactionsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -49,11 +52,19 @@ export default function TransactionsPage() {
   const expense = filtered.filter((transaction) => transaction.type === "expense").reduce((total, item) => total + Number(item.amount), 0);
 
   async function deleteTransaction(id: number) {
+    if (deletingId) return;
+    setDeletingId(id);
+    setError("");
     try {
       await api.deleteTransaction(id);
       setTransactions((current) => current.filter((transaction) => transaction.id !== id));
+      toast.success("Transaksi berhasil dihapus.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Transaksi gagal dihapus.");
+      const message = err instanceof Error ? err.message : "Transaksi gagal dihapus.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -121,7 +132,7 @@ export default function TransactionsPage() {
 
         {!loading ? (
           <AppCard>
-            <TransactionTable transactions={filtered} onDelete={deleteTransaction} />
+            <TransactionTable transactions={filtered} onDelete={deleteTransaction} deletingId={deletingId} />
           </AppCard>
         ) : null}
       </div>

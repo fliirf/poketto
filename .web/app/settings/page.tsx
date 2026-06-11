@@ -7,13 +7,14 @@ import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
 import { AppInput, Field } from "@/components/ui/AppInput";
 import { ErrorState, LoadingState } from "@/components/ui/States";
+import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
 import type { UserSettings } from "@/types/poketto";
 
 export default function SettingsPage() {
+  const toast = useToast();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -28,18 +29,20 @@ export default function SettingsPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!settings) return;
+    if (saving) return;
     setSaving(true);
     setError("");
-    setMessage("");
     try {
       const data = await api.updateUserSettings({
         ...settings,
         currency: settings.currency.toUpperCase()
       });
       setSettings(data.user_settings);
-      setMessage("Settings berhasil disimpan.");
+      toast.success("Settings berhasil disimpan.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Settings gagal disimpan.");
+      const message = err instanceof Error ? err.message : "Settings gagal disimpan.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -52,7 +55,6 @@ export default function SettingsPage() {
       {error ? <ErrorState message={error} /> : null}
       {settings ? (
         <AppCard className="mx-auto max-w-3xl">
-          {message ? <div className="mb-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{message}</div> : null}
           <form onSubmit={submit} className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Daily budget">

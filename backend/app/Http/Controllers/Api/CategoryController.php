@@ -25,7 +25,7 @@ class CategoryController extends ApiController
             'name' => ['required', 'string', 'max:100'],
             'type' => ['nullable', Rule::in(['income', 'expense'])],
             'monthly_budget' => ['nullable', 'numeric', 'min:0'],
-        ]);
+        ], $this->validationMessages());
 
         $category = Category::create([
             'user_id' => $request->user()->id,
@@ -34,7 +34,7 @@ class CategoryController extends ApiController
             'monthly_budget' => $validated['monthly_budget'] ?? 0,
         ]);
 
-        return $this->success(['category' => $category], 'Category created', 201);
+        return $this->success(['category' => $category], 'Kategori berhasil ditambahkan.', 201);
     }
 
     public function show(Request $request, Category $category)
@@ -52,11 +52,11 @@ class CategoryController extends ApiController
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'type' => ['sometimes', 'required', Rule::in(['income', 'expense'])],
             'monthly_budget' => ['sometimes', 'nullable', 'numeric', 'min:0'],
-        ]);
+        ], $this->validationMessages());
 
         $category->update($validated);
 
-        return $this->success(['category' => $category->fresh()], 'Category updated');
+        return $this->success(['category' => $category->fresh()], 'Kategori berhasil diperbarui.');
     }
 
     public function destroy(Request $request, Category $category)
@@ -64,11 +64,23 @@ class CategoryController extends ApiController
         $this->authorizeCategory($request, $category);
         $category->delete();
 
-        return $this->success(null, 'Category deleted');
+        return $this->success(null, 'Kategori berhasil dihapus.');
     }
 
     private function authorizeCategory(Request $request, Category $category): void
     {
         abort_if($category->user_id !== $request->user()->id, 404);
+    }
+
+    private function validationMessages(): array
+    {
+        return [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.max' => 'Nama kategori terlalu panjang.',
+            'type.required' => 'Tipe kategori wajib dipilih.',
+            'type.in' => 'Tipe kategori tidak valid.',
+            'monthly_budget.numeric' => 'Budget bulanan harus berupa angka.',
+            'monthly_budget.min' => 'Budget bulanan tidak boleh negatif.',
+        ];
     }
 }

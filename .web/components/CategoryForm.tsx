@@ -7,11 +7,13 @@ import { AppCard } from "@/components/ui/AppCard";
 import { AppInput, Field } from "@/components/ui/AppInput";
 import { AppSelect } from "@/components/ui/AppSelect";
 import { ErrorState } from "@/components/ui/States";
+import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
 import type { Category, TransactionType } from "@/types/poketto";
 
-export function CategoryForm({ category }: { category?: Category }) {
+export function CategoryForm({ category, onSaved }: { category?: Category; onSaved?: () => void | Promise<void> }) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -22,18 +24,32 @@ export function CategoryForm({ category }: { category?: Category }) {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
+    if (!form.name.trim()) {
+      const message = "Nama kategori wajib diisi.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     setSaving(true);
     setError("");
     try {
       if (category) {
         await api.updateCategory(category.id, form);
+        toast.success("Kategori berhasil diperbarui.");
+        router.push("/categories");
       } else {
         await api.createCategory(form);
+        toast.success("Kategori berhasil ditambahkan.");
+        await onSaved?.();
+        setForm({ name: "", type: form.type, monthly_budget: 0 });
       }
-      router.push("/categories");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Kategori gagal disimpan.");
+      const message = err instanceof Error ? err.message : "Kategori gagal disimpan.";
+      setError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }

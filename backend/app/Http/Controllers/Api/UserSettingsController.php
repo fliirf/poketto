@@ -20,12 +20,23 @@ class UserSettingsController extends ApiController
             'budget_warning_threshold' => ['sometimes', 'numeric', 'min:1', 'max:99'],
             'notification_enabled' => ['sometimes', 'boolean'],
             'location_enabled' => ['sometimes', 'boolean'],
+        ], [
+            'daily_budget.numeric' => 'Budget harian harus berupa angka.',
+            'daily_budget.min' => 'Budget harian tidak boleh negatif.',
+            'monthly_budget.numeric' => 'Budget bulanan harus berupa angka.',
+            'monthly_budget.min' => 'Budget bulanan tidak boleh negatif.',
+            'currency.max' => 'Mata uang maksimal 8 karakter.',
+            'budget_warning_threshold.numeric' => 'Batas peringatan harus berupa angka.',
+            'budget_warning_threshold.min' => 'Batas peringatan minimal 1%.',
+            'budget_warning_threshold.max' => 'Batas peringatan maksimal 99%.',
+            'notification_enabled.boolean' => 'Pengaturan notifikasi tidak valid.',
+            'location_enabled.boolean' => 'Pengaturan lokasi tidak valid.',
         ]);
 
         $settings = $this->settings($request);
         $settings->update($validated);
 
-        return $this->success(['user_settings' => $settings->fresh()], 'User settings updated');
+        return $this->success(['user_settings' => $settings->fresh()], 'Settings berhasil disimpan.');
     }
 
     private function settings(Request $request)
