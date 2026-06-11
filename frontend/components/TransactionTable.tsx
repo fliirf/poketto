@@ -43,10 +43,10 @@ export function TransactionTable({
               {type === "income" ? "+" : "-"} {formatCurrency(transaction.amount)}
             </td>
             <td className="rounded-r-2xl px-3 py-4">
-              <div className="flex justify-end gap-2">
+              <div className="flex min-w-[9.5rem] items-center justify-end gap-2">
                 <Link
                   href={`/transactions/${transaction.id}/edit`}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:text-poketto-700"
+                  className="inline-flex h-10 min-w-16 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-extrabold text-slate-600 shadow-sm transition hover:border-poketto-200 hover:bg-poketto-50 hover:text-poketto-700"
                 >
                   Edit
                 </Link>
@@ -56,7 +56,7 @@ export function TransactionTable({
                       <AppButton
                         type="button"
                         variant="danger"
-                        className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                        className="h-10 min-h-0 min-w-24 rounded-xl px-4 text-xs"
                         disabled={deletingId === transaction.id}
                         onClick={() => {
                           onDelete(transaction.id);
@@ -68,7 +68,7 @@ export function TransactionTable({
                       <AppButton
                         type="button"
                         variant="ghost"
-                        className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                        className="h-10 min-h-0 min-w-16 rounded-xl px-4 text-xs"
                         onClick={() => setPendingDeleteId(null)}
                       >
                         Batal
@@ -78,7 +78,7 @@ export function TransactionTable({
                     <AppButton
                       type="button"
                       variant="danger"
-                      className="min-h-0 rounded-xl px-3 py-2 text-xs"
+                      className="h-10 min-h-0 min-w-16 rounded-xl px-4 text-xs shadow-sm"
                       disabled={Boolean(deletingId)}
                       onClick={() => setPendingDeleteId(transaction.id)}
                     >
