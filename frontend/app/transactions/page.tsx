@@ -26,16 +26,23 @@ export default function TransactionsPage() {
   const [exporting, setExporting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [currency, setCurrency] = useState("IDR");
+  const [currencyRate, setCurrencyRate] = useState(1);
 
   useEffect(() => {
     setLoading(true);
     setError("");
-    Promise.all([api.transactions(filters), api.categories(), api.userSettings()])
-      .then(([transactionData, categoryData, settingsData]) => {
+    Promise.all([api.transactions(filters), api.categories(), api.userSettings(), api.exchangeRates("IDR")])
+      .then(([transactionData, categoryData, settingsData, exchangeRateData]) => {
+        const nextCurrency = settingsData.user_settings.currency;
+        const nextRate = nextCurrency === "IDR"
+          ? 1
+          : Number(exchangeRateData.exchange_rates.find((rate) => rate.target_currency === nextCurrency && rate.base_currency === "IDR")?.rate ?? 0) || 1;
+
         setTransactions(transactionData.transactions);
         setCategories(categoryData.categories);
-        setCurrency(settingsData.user_settings.currency);
-        setStoredCurrency(settingsData.user_settings.currency);
+        setCurrency(nextCurrency);
+        setCurrencyRate(nextRate);
+        setStoredCurrency(nextCurrency);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Transaksi gagal dimuat."))
       .finally(() => setLoading(false));
@@ -54,6 +61,7 @@ export default function TransactionsPage() {
 
   const income = filtered.filter((transaction) => transaction.type === "income").reduce((total, item) => total + Number(item.amount), 0);
   const expense = filtered.filter((transaction) => transaction.type === "expense").reduce((total, item) => total + Number(item.amount), 0);
+  const displayAmount = (value: number) => value * currencyRate;
   const pdfPeriodLabel = describePdfPeriod(filters);
 
   async function deleteTransaction(id: number) {
@@ -137,9 +145,9 @@ export default function TransactionsPage() {
         </AppCard>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Pemasukan" value={income} currency={currency} tone="income" />
-          <StatCard label="Pengeluaran" value={expense} currency={currency} tone="expense" />
-          <StatCard label="Sisa" value={income - expense} currency={currency} />
+          <StatCard label="Pemasukan" value={displayAmount(income)} currency={currency} tone="income" />
+          <StatCard label="Pengeluaran" value={displayAmount(expense)} currency={currency} tone="expense" />
+          <StatCard label="Sisa" value={displayAmount(income - expense)} currency={currency} />
         </div>
 
         {loading ? <LoadingState /> : null}
@@ -147,7 +155,7 @@ export default function TransactionsPage() {
 
         {!loading ? (
           <AppCard>
-            <TransactionTable transactions={filtered} onDelete={deleteTransaction} deletingId={deletingId} />
+            <TransactionTable transactions={filtered} onDelete={deleteTransaction} deletingId={deletingId} currency={currency} currencyRate={currencyRate} />
           </AppCard>
         ) : null}
       </div>

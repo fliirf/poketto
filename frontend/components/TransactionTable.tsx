@@ -6,17 +6,21 @@ import { AppButton } from "@/components/ui/AppButton";
 import { AppTable } from "@/components/ui/AppTable";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
-import { formatAppCurrency, formatDate } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import type { Transaction } from "@/types/poketto";
 
 export function TransactionTable({
   transactions,
   onDelete,
-  deletingId
+  deletingId,
+  currency = "IDR",
+  currencyRate = 1
 }: {
   transactions: Transaction[];
   onDelete?: (id: number) => Promise<void> | void;
   deletingId?: number | null;
+  currency?: string;
+  currencyRate?: number;
 }) {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
@@ -55,7 +59,7 @@ export function TransactionTable({
               </div>
             </td>
             <td className={`px-3 py-4 text-right font-black whitespace-nowrap ${type === "income" ? "text-emerald-600" : "text-red-600"}`}>
-              {type === "income" ? "+" : "-"} {formatAppCurrency(transaction.amount)}
+              {type === "income" ? "+" : "-"} {formatCurrency(Number(transaction.amount || 0) * currencyRate, currency)}
             </td>
             <td className="rounded-r-2xl px-3 py-4">
               <div className="flex items-center justify-end gap-2">

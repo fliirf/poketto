@@ -365,7 +365,7 @@ export default function DashboardPage() {
                     Lihat semua
                   </AppLinkButton>
                 </div>
-                <TransactionTable transactions={summary.recent_transactions} />
+                <TransactionTable transactions={summary.recent_transactions} currency={currency} currencyRate={currencyRate} />
               </AppCard>
 
               <AppCard>

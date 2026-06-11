@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
-import { formatAppCurrency } from "@/lib/format";
+import { formatCurrency, setStoredCurrency } from "@/lib/format";
 import type { Category } from "@/types/poketto";
 
 export default function CategoriesPage() {
@@ -21,13 +21,27 @@ export default function CategoriesPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [currency, setCurrency] = useState("IDR");
+  const [currencyRate, setCurrencyRate] = useState(1);
 
   const loadCategories = useCallback(async () => {
     setError("");
     setLoading(true);
     try {
-      const data = await api.categories();
-      setCategories(data.categories);
+      const [categoryData, settingsData, exchangeRateData] = await Promise.all([
+        api.categories(),
+        api.userSettings(),
+        api.exchangeRates("IDR")
+      ]);
+      const nextCurrency = settingsData.user_settings.currency;
+      const nextRate = nextCurrency === "IDR"
+        ? 1
+        : Number(exchangeRateData.exchange_rates.find((rate) => rate.target_currency === nextCurrency && rate.base_currency === "IDR")?.rate ?? 0) || 1;
+
+      setCategories(categoryData.categories);
+      setCurrency(nextCurrency);
+      setCurrencyRate(nextRate);
+      setStoredCurrency(nextCurrency);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kategori gagal dimuat.");
     } finally {
@@ -73,7 +87,9 @@ export default function CategoriesPage() {
                     <p className="font-black text-slate-900">{category.name}</p>
                     <Badge tone={category.type}>{category.type === "income" ? "Pemasukan" : "Pengeluaran"}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-slate-500">Budget: {formatAppCurrency(category.monthly_budget ?? 0)}</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Budget: {formatCurrency(Number(category.monthly_budget ?? 0) * currencyRate, currency)}
+                  </p>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
                   <Link
