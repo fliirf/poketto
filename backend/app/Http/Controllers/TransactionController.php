@@ -198,7 +198,7 @@ public function exportPdf(Request $request)
         'currency' => $currency,
         'categoryBreakdown' => $categoryBreakdown,
         'dailyTrend' => $dailyTrend,
-        'logoPath' => extension_loaded('gd') ? public_path('MASCOT.png') : null,
+        'logoPath' => public_path('MASCOT.jpg'),
     ]);
     
     return $pdf->download("Laporan_Poketto_{$monthName}_{$year}.pdf");
