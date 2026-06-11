@@ -25,25 +25,29 @@ export function TransactionTable({
   }
 
   return (
-    <AppTable headers={["Tanggal", "Kategori", "Catatan", "Lokasi", "Nominal", "Aksi"]}>
+    <AppTable
+      headers={["Tanggal", "Kategori", "Catatan", "Lokasi", "Nominal", "Aksi"]}
+      columnClasses={["w-36", "w-44", "w-[22%]", "w-40", "w-56", "w-52"]}
+      headerClasses={["", "", "", "", "text-right", "text-right"]}
+    >
       {transactions.map((transaction) => {
         const type = transaction.type ?? transaction.category?.type ?? "expense";
         const category = transaction.category?.name ?? transaction.category_name ?? "Tanpa kategori";
         return (
           <tr key={transaction.id} className="rounded-2xl bg-slate-50 text-sm">
-            <td className="rounded-l-2xl px-3 py-4 text-slate-500">{formatDate(transaction.date ?? transaction.transaction_date)}</td>
-            <td className="px-3 py-4">
+            <td className="rounded-l-2xl px-3 py-4 whitespace-nowrap text-slate-500">{formatDate(transaction.date ?? transaction.transaction_date)}</td>
+            <td className="px-3 py-4 whitespace-nowrap">
               <Badge tone={type}>{category}</Badge>
             </td>
             <td className="max-w-[14rem] truncate px-3 py-4 text-slate-600">{transaction.description || "-"}</td>
             <td className="max-w-[12rem] truncate px-3 py-4 text-slate-400">
               {transaction.location_name || "-"}
             </td>
-            <td className={`px-3 py-4 text-right font-black ${type === "income" ? "text-emerald-600" : "text-red-600"}`}>
+            <td className={`px-3 py-4 text-right font-black whitespace-nowrap ${type === "income" ? "text-emerald-600" : "text-red-600"}`}>
               {type === "income" ? "+" : "-"} {formatCurrency(transaction.amount)}
             </td>
             <td className="rounded-r-2xl px-3 py-4">
-              <div className="flex min-w-[9.5rem] items-center justify-end gap-2">
+              <div className="flex items-center justify-end gap-2">
                 <Link
                   href={`/transactions/${transaction.id}/edit`}
                   className="inline-flex h-10 min-w-16 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-extrabold text-slate-600 shadow-sm transition hover:border-poketto-200 hover:bg-poketto-50 hover:text-poketto-700"
