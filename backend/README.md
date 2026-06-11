@@ -62,7 +62,7 @@ Service role key Supabase tidak boleh masuk frontend. Laravel backend tetap menj
 ### Render Web Service
 
 - Root Directory: `backend`
-- Build Command:
+- If Render offers a PHP runtime, use this Build Command:
 
 ```bash
 composer install --no-dev --optimize-autoloader && php artisan config:clear && php artisan route:clear && php artisan view:clear
@@ -73,6 +73,8 @@ composer install --no-dev --optimize-autoloader && php artisan config:clear && p
 ```bash
 php artisan migrate --force && php artisan serve --host 0.0.0.0 --port $PORT
 ```
+
+If Render does not offer a PHP runtime, choose Docker instead. Keep Root Directory as `backend`; Render will use `backend/Dockerfile`, install PHP extensions including `pdo_pgsql`, run migrations, and bind Laravel to `$PORT`.
 
 ### Environment Variables Render
 

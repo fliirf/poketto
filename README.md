@@ -73,7 +73,7 @@ Backend Laravel bisa tetap memakai SQLite untuk local development, tetapi produc
 
 - Type: Web Service
 - Root Directory: `backend`
-- Runtime: PHP
+- Runtime: PHP, if available
 - Build Command:
 
 ```bash
@@ -85,6 +85,8 @@ composer install --no-dev --optimize-autoloader && php artisan config:clear && p
 ```bash
 php artisan migrate --force && php artisan serve --host 0.0.0.0 --port $PORT
 ```
+
+If PHP is not listed in Render, choose **Docker**. Keep Root Directory as `backend`; Render will use `backend/Dockerfile`, install Laravel dependencies and PostgreSQL PHP extensions, then run the same migrate-and-serve startup flow.
 
 ### 3. Environment Variables Render
 
