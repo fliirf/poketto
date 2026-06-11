@@ -155,7 +155,7 @@ class TransactionController extends ApiController
             'currency' => $currency,
             'categoryBreakdown' => $categoryBreakdown,
             'dailyTrend' => $dailyTrend,
-            'logoPath' => public_path('MASCOT.png'),
+            'logoPath' => extension_loaded('gd') ? public_path('MASCOT.png') : null,
         ]);
 
         return $pdf->download($period['filename']);

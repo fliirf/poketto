@@ -40,6 +40,20 @@
             vertical-align: top;
             width: 52px;
         }
+        .brand-fallback {
+            background: #fff3e5;
+            border: 1px solid #ffd8ad;
+            border-radius: 14px;
+            color: #d76b13;
+            display: inline-block;
+            font-size: 18px;
+            font-weight: 800;
+            height: 52px;
+            line-height: 50px;
+            text-align: center;
+            vertical-align: top;
+            width: 52px;
+        }
         .brand-copy {
             display: inline-block;
             margin-left: 14px;
@@ -263,7 +277,7 @@
                     @if(! empty($logoPath) && file_exists($logoPath))
                         <img class="brand-logo" src="{{ $logoPath }}" alt="Poketto">
                     @else
-                        <strong style="color: #f28f33; font-size: 24px;">POKETTO</strong>
+                        <span class="brand-fallback">PO</span>
                     @endif
                     <div class="brand-copy">
                         <h1>Laporan Keuangan</h1>
