@@ -22,7 +22,7 @@ export function BrandLogo({
       </span>
       {!compact ? (
         <span className="block">
-          <span className="block text-xl font-black tracking-normal text-poketto-600">POKETTO</span>
+          <span className="font-brand block text-xl font-black tracking-normal text-poketto-600">POKETTO</span>
           <span className="mt-1 block text-xs font-semibold text-slate-400">Finance dashboard</span>
         </span>
       ) : null}
