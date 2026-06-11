@@ -28,7 +28,8 @@ class BudgetAlertService
             return $alerts;
         }
 
-        $warningPercent = (float) ($settings->budget_warning_threshold ?? 80);
+        $warningPercent = max(1, min(99, (float) ($settings->budget_warning_threshold ?? 80)));
+        $warningLabel = rtrim(rtrim(number_format($warningPercent, 2, '.', ''), '0'), '.');
         $warningRatio = max(1, min(99, $warningPercent)) / 100;
 
         $todayExpense = Transaction::query()
@@ -61,7 +62,7 @@ class BudgetAlertService
                 'user_id' => $user->id,
                 'category_id' => null,
                 'alert_type' => 'daily_budget_warning',
-                'message' => "Peringatan! Pengeluaran harian sudah mencapai {$warningPercent}% dari budget.",
+                'message' => "Peringatan! Pengeluaran harian sudah mencapai {$warningLabel}% dari budget.",
                 'threshold_value' => $dailyBudget,
                 'current_value' => (float) $todayExpense,
                 'is_read' => false,
@@ -77,7 +78,7 @@ class BudgetAlertService
             ->where('type', 'expense')
             ->where('monthly_budget', '>', 0)
             ->get()
-            ->each(function (Category $category) use ($alerts, $monthStart, $monthEnd, $user, $warningRatio, $warningPercent): void {
+            ->each(function (Category $category) use ($alerts, $monthStart, $monthEnd, $user, $warningRatio, $warningLabel): void {
                 $spent = Transaction::query()
                     ->where('user_id', $user->id)
                     ->where('category_id', $category->id)
@@ -98,7 +99,7 @@ class BudgetAlertService
                         'user_id' => $user->id,
                         'category_id' => $category->id,
                         'alert_type' => 'category_budget',
-                        'message' => "Peringatan! Pengeluaran kategori {$category->name} telah mencapai {$warningPercent}% dari budget bulanan.",
+                        'message' => "Peringatan! Pengeluaran kategori {$category->name} telah mencapai {$warningLabel}% dari budget bulanan.",
                         'threshold_value' => (float) $category->monthly_budget,
                         'current_value' => (float) $spent,
                         'is_read' => false,
@@ -107,12 +108,6 @@ class BudgetAlertService
                 }
             });
 
-        return $alerts->merge(
-            $user->budgetAlerts()
-                ->with('category')
-                ->latest()
-                ->get()
-                ->map(fn ($alert) => $alert->toArray()),
-        )->values();
+        return $alerts->values();
     }
 }

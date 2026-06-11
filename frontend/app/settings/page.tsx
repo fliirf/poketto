@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [dailyBudgetInput, setDailyBudgetInput] = useState("");
   const [monthlyBudgetInput, setMonthlyBudgetInput] = useState("");
+  const [thresholdInput, setThresholdInput] = useState("");
 
   useEffect(() => {
     api
@@ -31,6 +32,7 @@ export default function SettingsPage() {
         setSettings(data.user_settings);
         setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
         setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
+        setThresholdInput(String(Math.round(Number(data.user_settings.budget_warning_threshold ?? 80))));
         setStoredCurrency(data.user_settings.currency);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Settings gagal dimuat."))
@@ -44,13 +46,16 @@ export default function SettingsPage() {
     setSaving(true);
     setError("");
     try {
+      const threshold = Math.max(1, Math.min(99, Number(thresholdInput || 80)));
       const data = await api.updateUserSettings({
         ...settings,
+        budget_warning_threshold: threshold,
         currency: settings.currency.toUpperCase()
       });
       setSettings(data.user_settings);
       setDailyBudgetInput(formatNumberInput(data.user_settings.daily_budget));
       setMonthlyBudgetInput(formatNumberInput(data.user_settings.monthly_budget));
+      setThresholdInput(String(Math.round(Number(data.user_settings.budget_warning_threshold ?? threshold))));
       setStoredCurrency(data.user_settings.currency);
       toast.success("Settings berhasil disimpan.");
     } catch (err) {
@@ -115,9 +120,18 @@ export default function SettingsPage() {
                     type="text"
                     inputMode="numeric"
                     className="min-h-11 w-full rounded-2xl bg-transparent px-4 text-sm font-medium outline-none"
-                    value={settings.budget_warning_threshold ?? 80}
+                    value={thresholdInput}
                     onChange={(event) => {
-                      const value = Math.min(99, Number(event.target.value.replace(/\D/g, "")) || 1);
+                      const digits = event.target.value.replace(/\D/g, "").slice(0, 2);
+                      setThresholdInput(digits);
+                      setSettings({
+                        ...settings,
+                        budget_warning_threshold: digits ? Math.max(1, Math.min(99, Number(digits))) : undefined
+                      });
+                    }}
+                    onBlur={() => {
+                      const value = Math.max(1, Math.min(99, Number(thresholdInput || 80)));
+                      setThresholdInput(String(value));
                       setSettings({ ...settings, budget_warning_threshold: value });
                     }}
                   />
