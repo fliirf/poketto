@@ -10,6 +10,7 @@ import { AppLinkButton } from "@/components/ui/AppButton";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api";
+import { resolveDisplayCurrency } from "@/lib/currency";
 import { formatCurrency, formatDate, setStoredCurrency } from "@/lib/format";
 import type { Category, DashboardSummary, ExchangeRate, Filters } from "@/types/poketto";
 
@@ -66,10 +67,9 @@ export default function DashboardPage() {
   const visibleRates = orderedRates.length ? orderedRates : rates.slice(0, 5);
   const baseCurrency = visibleRates[0]?.base_currency ?? "IDR";
   const updatedAt = visibleRates.find((rate) => rate.fetched_at)?.fetched_at;
-  const currency = settingsCurrency || summary?.currency || "IDR";
-  const currencyRate = currency === "IDR"
-    ? 1
-    : Number(rates.find((rate) => rate.target_currency === currency && rate.base_currency === "IDR")?.rate ?? 0) || 1;
+  const displayCurrency = resolveDisplayCurrency(settingsCurrency || summary?.currency, rates);
+  const currency = displayCurrency.currency;
+  const currencyRate = displayCurrency.rate;
   const displayAmount = (value: number | string) => Number(value || 0) * currencyRate;
   const expenseRatio = summary && Number(summary.total_income) > 0
     ? (Number(summary.total_expense) / Number(summary.total_income)) * 100

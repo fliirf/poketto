@@ -12,6 +12,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
+import { resolveDisplayCurrency } from "@/lib/currency";
 import { setStoredCurrency } from "@/lib/format";
 import type { Category, Filters, Transaction } from "@/types/poketto";
 
@@ -33,16 +34,13 @@ export default function TransactionsPage() {
     setError("");
     Promise.all([api.transactions(filters), api.categories(), api.userSettings(), api.exchangeRates("IDR")])
       .then(([transactionData, categoryData, settingsData, exchangeRateData]) => {
-        const nextCurrency = settingsData.user_settings.currency;
-        const nextRate = nextCurrency === "IDR"
-          ? 1
-          : Number(exchangeRateData.exchange_rates.find((rate) => rate.target_currency === nextCurrency && rate.base_currency === "IDR")?.rate ?? 0) || 1;
+        const displayCurrency = resolveDisplayCurrency(settingsData.user_settings.currency, exchangeRateData.exchange_rates);
 
         setTransactions(transactionData.transactions);
         setCategories(categoryData.categories);
-        setCurrency(nextCurrency);
-        setCurrencyRate(nextRate);
-        setStoredCurrency(nextCurrency);
+        setCurrency(displayCurrency.currency);
+        setCurrencyRate(displayCurrency.rate);
+        setStoredCurrency(displayCurrency.currency);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Transaksi gagal dimuat."))
       .finally(() => setLoading(false));

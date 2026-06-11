@@ -43,14 +43,23 @@ export function formatDate(value?: string | null) {
     day: "2-digit",
     month: "short",
     year: "numeric"
-  }).format(new Date(value));
+  }).format(parseAppDate(value));
 }
 
 export function toDateInput(value?: string | null) {
-  const date = value ? new Date(value) : new Date();
+  const date = value ? parseAppDate(value) : new Date();
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60_000);
   return local.toISOString().slice(0, 10);
+}
+
+function parseAppDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  return new Date(value);
 }
 
 export function classNames(...values: Array<string | false | null | undefined>) {

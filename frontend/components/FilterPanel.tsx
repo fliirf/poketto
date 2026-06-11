@@ -16,21 +16,38 @@ export function FilterPanel({
   onChange: (filters: Filters) => void;
   onReset: () => void;
 }) {
+  const selectedType = filters.type ?? "";
+  const visibleCategories = selectedType
+    ? categories.filter((category) => category.type === selectedType)
+    : categories;
+
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.15fr_1fr_auto] xl:items-end">
       <Field label="Mulai">
-        <AppInput type="date" value={filters.start_date ?? ""} onChange={(event) => onChange({ ...filters, start_date: event.target.value })} />
+        <AppInput
+          type="date"
+          value={filters.start_date ?? ""}
+          onChange={(event) => onChange({ ...filters, start_date: event.target.value, month: "" })}
+        />
       </Field>
       <Field label="Sampai">
-        <AppInput type="date" value={filters.end_date ?? ""} onChange={(event) => onChange({ ...filters, end_date: event.target.value })} />
+        <AppInput
+          type="date"
+          value={filters.end_date ?? ""}
+          onChange={(event) => onChange({ ...filters, end_date: event.target.value, month: "" })}
+        />
       </Field>
       <Field label="Bulan">
-        <AppInput type="month" value={filters.month ?? ""} onChange={(event) => onChange({ ...filters, month: event.target.value })} />
+        <AppInput
+          type="month"
+          value={filters.month ?? ""}
+          onChange={(event) => onChange({ ...filters, month: event.target.value, start_date: "", end_date: "" })}
+        />
       </Field>
       <Field label="Kategori">
         <AppSelect value={filters.category_id ?? ""} onChange={(event) => onChange({ ...filters, category_id: event.target.value })}>
           <option value="">Semua</option>
-          {categories.map((category) => (
+          {visibleCategories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
             </option>
@@ -38,7 +55,18 @@ export function FilterPanel({
         </AppSelect>
       </Field>
       <Field label="Tipe">
-        <AppSelect value={filters.type ?? ""} onChange={(event) => onChange({ ...filters, type: event.target.value as Filters["type"] })}>
+        <AppSelect
+          value={selectedType}
+          onChange={(event) => {
+            const nextType = event.target.value as Filters["type"];
+            const selectedCategory = categories.find((category) => String(category.id) === filters.category_id);
+            onChange({
+              ...filters,
+              type: nextType,
+              category_id: nextType && selectedCategory?.type !== nextType ? "" : filters.category_id
+            });
+          }}
+        >
           <option value="">Semua</option>
           <option value="income">Pemasukan</option>
           <option value="expense">Pengeluaran</option>
