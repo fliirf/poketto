@@ -44,9 +44,15 @@ class UserSetting extends Model
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
-    private function booleanForDatabase($value): bool
+    private function booleanForDatabase($value): bool|string
     {
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        $boolean = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+
+        if ($this->getConnection()->getDriverName() === 'pgsql') {
+            return $boolean ? 'true' : 'false';
+        }
+
+        return $boolean;
     }
 
     public function user()

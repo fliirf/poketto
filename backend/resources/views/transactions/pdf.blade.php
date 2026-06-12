@@ -265,7 +265,9 @@
         $realExpenseRatio = $income > 0 ? ($expense / $income) * 100 : ($expense > 0 ? 100 : 0);
         $maxCategory = max($categoryBreakdown->max('total') ?? 0, 1);
         $maxDaily = max($dailyTrend->max('total') ?? 0, 1);
-        $money = fn ($value) => $currency.' '.number_format((float) $value, 0, ',', '.');
+        $currencyRate = (float) ($currencyRate ?? 1);
+        $fractionDigits = in_array(strtoupper($currency), ['IDR', 'JPY'], true) ? 0 : 2;
+        $money = fn ($value) => $currency.' '.number_format(((float) $value) * $currencyRate, $fractionDigits, ',', '.');
         $periodLabel = trim($monthName.' '.$year);
         $generatedAt = now()->timezone(config('app.timezone', 'Asia/Jakarta'))->format('d M Y H:i');
     @endphp

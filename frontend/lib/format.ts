@@ -1,9 +1,11 @@
 export function formatCurrency(value: number | string | null | undefined, currency = "IDR") {
   const amount = Number(value ?? 0);
+  const fractionDigits = ["IDR", "JPY"].includes(currency.toUpperCase()) ? 0 : 2;
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
   }).format(amount);
 }
 

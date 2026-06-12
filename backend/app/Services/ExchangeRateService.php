@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Http;
 
 class ExchangeRateService
 {
+    private const BASE_CURRENCY = 'IDR';
+
     public function getRates(string $base = 'IDR'): array
     {
         $base = strtoupper($base);
@@ -41,5 +43,23 @@ class ExchangeRateService
         }
 
         return [];
+    }
+
+    public function resolveDisplayCurrency(?string $preferredCurrency): array
+    {
+        $currency = strtoupper($preferredCurrency ?: self::BASE_CURRENCY);
+        if ($currency === self::BASE_CURRENCY) {
+            return ['currency' => self::BASE_CURRENCY, 'rate' => 1.0, 'converted' => true];
+        }
+
+        $rateRow = collect($this->getRates(self::BASE_CURRENCY))
+            ->first(fn (array $item) => ($item['target_currency'] ?? null) === $currency);
+        $rate = (float) ($rateRow['rate'] ?? 0);
+
+        if (! is_finite($rate) || $rate <= 0) {
+            return ['currency' => self::BASE_CURRENCY, 'rate' => 1.0, 'converted' => false];
+        }
+
+        return ['currency' => $currency, 'rate' => $rate, 'converted' => true];
     }
 }

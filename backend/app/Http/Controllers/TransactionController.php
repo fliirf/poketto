@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\ExchangeRateService;
 use App\Services\PokettoApiClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -152,7 +153,7 @@ public function report(Request $request)
     ));
 }
 
-public function exportPdf(Request $request)
+public function exportPdf(Request $request, ExchangeRateService $exchangeRateService)
 {
     $userId = auth()->id();
     $month = $request->get('month', date('m'));
@@ -170,7 +171,9 @@ public function exportPdf(Request $request)
     $income = $incomeTransactions->sum('amount');
     $expense = $expenseTransactions->sum('amount');
     $monthName = date('F', mktime(0, 0, 0, $month, 1));
-    $currency = 'IDR';
+    $displayCurrency = $exchangeRateService->resolveDisplayCurrency(Auth::user()?->userSetting?->currency);
+    $currency = $displayCurrency['currency'];
+    $currencyRate = $displayCurrency['rate'];
     $categoryBreakdown = $expenseTransactions
         ->groupBy(fn (Transaction $transaction) => $transaction->category?->name ?? 'Tanpa kategori')
         ->map(fn ($items, string $category) => [
@@ -196,6 +199,7 @@ public function exportPdf(Request $request)
         'income' => $income,
         'expense' => $expense,
         'currency' => $currency,
+        'currencyRate' => $currencyRate,
         'categoryBreakdown' => $categoryBreakdown,
         'dailyTrend' => $dailyTrend,
         'logoPath' => public_path('MASCOT.jpg'),

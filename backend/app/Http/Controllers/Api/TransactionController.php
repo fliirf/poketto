@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\ExchangeRateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -38,6 +39,7 @@ class TransactionController extends ApiController
     {
         $validated = $this->validateTransaction($request);
         $category = $this->resolveCategory($request, $validated);
+        abort_if($category?->type !== $validated['type'], 422, 'Kategori tidak sesuai tipe transaksi.');
 
         $transaction = Transaction::create([
             'user_id' => $request->user()->id,
@@ -75,6 +77,9 @@ class TransactionController extends ApiController
         $this->authorizeTransaction($request, $transaction);
         $validated = $this->validateTransaction($request, true);
         $category = $this->resolveCategory($request, $validated, required: false);
+        $effectiveType = $validated['type'] ?? $transaction->type;
+        $effectiveCategory = $category ?? $transaction->category;
+        abort_if($effectiveCategory && $effectiveCategory->type !== $effectiveType, 422, 'Kategori tidak sesuai tipe transaksi.');
 
         $payload = $validated;
         if ($category) {
@@ -102,7 +107,7 @@ class TransactionController extends ApiController
         return $this->success(null, 'Transaksi berhasil dihapus.');
     }
 
-    public function exportPdf(Request $request)
+    public function exportPdf(Request $request, ExchangeRateService $exchangeRateService)
     {
         $filters = $request->validate([
             'start_date' => ['nullable', 'date'],
@@ -127,7 +132,9 @@ class TransactionController extends ApiController
         $expense = $expenseTransactions->sum('amount');
         $period = $this->pdfPeriod($filters);
         $settings = $request->user()->userSetting;
-        $currency = $settings?->currency ?? 'IDR';
+        $displayCurrency = $exchangeRateService->resolveDisplayCurrency($settings?->currency);
+        $currency = $displayCurrency['currency'];
+        $currencyRate = $displayCurrency['rate'];
         $categoryBreakdown = $expenseTransactions
             ->groupBy(fn (Transaction $transaction) => $transaction->category?->name ?? 'Tanpa kategori')
             ->map(fn ($items, string $category) => [
@@ -153,6 +160,7 @@ class TransactionController extends ApiController
             'income' => $income,
             'expense' => $expense,
             'currency' => $currency,
+            'currencyRate' => $currencyRate,
             'categoryBreakdown' => $categoryBreakdown,
             'dailyTrend' => $dailyTrend,
             'logoPath' => public_path('MASCOT.jpg'),
@@ -246,7 +254,7 @@ class TransactionController extends ApiController
         }
 
         $category = Category::where('user_id', $request->user()->id)->find($validated['category_id']);
-        abort_if(! $category && $required, 422, 'Kategori tidak valid.');
+        abort_if(! $category, 422, 'Kategori tidak valid.');
 
         return $category;
     }
