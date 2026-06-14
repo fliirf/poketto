@@ -62,7 +62,7 @@ class BudgetAlertService
         return collect()
             ->merge($this->checkDailyBudget($user, $settings, $now))
             ->merge($this->checkMonthlyBudget($user, $settings, $now))
-            ->merge($this->checkCategoryBudgets($user, $now));
+            ->merge($this->checkCategoryBudgets($user, $settings, $now));
     }
 
     private function checkDailyBudget(User $user, UserSetting $settings, Carbon $now): Collection
@@ -75,19 +75,25 @@ class BudgetAlertService
         }
 
         $todayExpense = $this->expenseSum($user->id, $today, $today->copy()->endOfDay());
+        $thresholdPercent = $this->thresholdPercent($settings);
+        $thresholdAmount = $this->thresholdAmount($dailyBudget, $thresholdPercent);
 
-        if ($todayExpense < $dailyBudget) {
+        if ($todayExpense < $thresholdAmount) {
             return collect();
         }
+
+        $overLimit = $todayExpense >= $dailyBudget;
 
         return collect([
             $this->definition(
                 user: $user,
                 key: 'daily_budget:'.$today->toDateString(),
                 type: 'daily_budget',
-                title: 'Daily budget habis',
-                message: 'Daily budget kamu sudah mencapai limit.',
-                threshold: $dailyBudget,
+                title: $overLimit ? 'Daily budget habis' : 'Daily budget hampir habis',
+                message: $overLimit
+                    ? 'Daily budget kamu sudah mencapai limit.'
+                    : 'Pengeluaran harian kamu sudah mencapai '.$this->formatPercent($thresholdPercent).' dari daily budget.',
+                threshold: $thresholdAmount,
                 current: $todayExpense,
                 periodDate: $today,
             ),
@@ -106,54 +112,65 @@ class BudgetAlertService
         }
 
         $monthExpense = $this->expenseSum($user->id, $monthStart, $monthEnd);
+        $thresholdPercent = $this->thresholdPercent($settings);
+        $thresholdAmount = $this->thresholdAmount($monthlyBudget, $thresholdPercent);
 
-        if ($monthExpense < $monthlyBudget) {
+        if ($monthExpense < $thresholdAmount) {
             return collect();
         }
+
+        $overLimit = $monthExpense >= $monthlyBudget;
 
         return collect([
             $this->definition(
                 user: $user,
                 key: 'monthly_budget:'.$month,
                 type: 'monthly_budget',
-                title: 'Monthly budget habis',
-                message: 'Monthly budget kamu sudah mencapai limit.',
-                threshold: $monthlyBudget,
+                title: $overLimit ? 'Monthly budget habis' : 'Monthly budget hampir habis',
+                message: $overLimit
+                    ? 'Monthly budget kamu sudah mencapai limit.'
+                    : 'Pengeluaran bulan ini sudah mencapai '.$this->formatPercent($thresholdPercent).' dari monthly budget.',
+                threshold: $thresholdAmount,
                 current: $monthExpense,
                 periodMonth: $month,
             ),
         ]);
     }
 
-    private function checkCategoryBudgets(User $user, Carbon $now): Collection
+    private function checkCategoryBudgets(User $user, UserSetting $settings, Carbon $now): Collection
     {
         $month = $now->format('Y-m');
         $monthStart = $now->copy()->startOfMonth();
         $monthEnd = $now->copy()->endOfMonth();
+        $thresholdPercent = $this->thresholdPercent($settings);
 
         return Category::query()
             ->where('user_id', $user->id)
             ->where('type', 'expense')
             ->where('monthly_budget', '>', 0)
             ->get()
-            ->map(function (Category $category) use ($user, $monthStart, $monthEnd, $month): ?array {
+            ->map(function (Category $category) use ($user, $monthStart, $monthEnd, $month, $thresholdPercent): ?array {
                 $budget = (float) $category->monthly_budget;
                 $spent = $this->expenseSum($user->id, $monthStart, $monthEnd, $category->id);
+                $thresholdAmount = $this->thresholdAmount($budget, $thresholdPercent);
 
-                if ($spent < $budget) {
+                if ($spent < $thresholdAmount) {
                     return null;
                 }
 
+                $overLimit = $spent >= $budget;
                 $overBudget = max(0, $spent - $budget);
                 return $this->definition(
                     user: $user,
                     key: "category_budget:{$category->id}:{$month}",
                     type: 'category_budget',
-                    title: 'Budget kategori habis',
+                    title: $overLimit ? 'Budget kategori habis' : 'Budget kategori hampir habis',
                     message: $overBudget > 0
                         ? "Budget kategori {$category->name} sudah melebihi budget sebesar Rp ".number_format($overBudget, 0, ',', '.').'.'
-                        : "Budget kategori {$category->name} sudah mencapai limit.",
-                    threshold: $budget,
+                        : ($overLimit
+                            ? "Budget kategori {$category->name} sudah mencapai limit."
+                            : "Budget kategori {$category->name} sudah mencapai ".$this->formatPercent($thresholdPercent).'.'),
+                    threshold: $thresholdAmount,
                     current: $spent,
                     categoryId: $category->id,
                     periodMonth: $month,
@@ -252,5 +269,20 @@ class BudgetAlertService
                     });
             })
             ->sum('amount');
+    }
+
+    private function thresholdPercent(UserSetting $settings): float
+    {
+        return min(100, max(1, (float) ($settings->budget_warning_threshold ?? 80)));
+    }
+
+    private function thresholdAmount(float $budget, float $thresholdPercent): float
+    {
+        return $budget * ($thresholdPercent / 100);
+    }
+
+    private function formatPercent(float $percent): string
+    {
+        return rtrim(rtrim(number_format($percent, 2, ',', '.'), '0'), ',').'%';
     }
 }

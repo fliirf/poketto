@@ -47,7 +47,7 @@ export default function SettingsPage() {
     setSaving(true);
     setError("");
     try {
-      const threshold = Math.max(1, Math.min(99, Number(thresholdInput || 80)));
+      const threshold = Math.max(1, Math.min(100, Number(thresholdInput || 80)));
       const data = await api.updateUserSettings({
         daily_budget: parseNumberInput(dailyBudgetInput),
         monthly_budget: parseNumberInput(monthlyBudgetInput),
@@ -129,15 +129,15 @@ export default function SettingsPage() {
                     className="min-h-11 w-full rounded-2xl bg-transparent px-4 text-sm font-medium outline-none"
                     value={thresholdInput}
                     onChange={(event) => {
-                      const digits = event.target.value.replace(/\D/g, "").slice(0, 2);
+                      const digits = event.target.value.replace(/\D/g, "").slice(0, 3);
                       setThresholdInput(digits);
                       setSettings({
                         ...settings,
-                        budget_warning_threshold: digits ? Math.max(1, Math.min(99, Number(digits))) : undefined
+                        budget_warning_threshold: digits ? Math.max(1, Math.min(100, Number(digits))) : undefined
                       });
                     }}
                     onBlur={() => {
-                      const value = Math.max(1, Math.min(99, Number(thresholdInput || 80)));
+                      const value = Math.max(1, Math.min(100, Number(thresholdInput || 80)));
                       setThresholdInput(String(value));
                       setSettings({ ...settings, budget_warning_threshold: value });
                     }}

@@ -19,7 +19,7 @@ class UserSettingsController extends ApiController
             'daily_budget' => ['sometimes', 'numeric', 'min:0'],
             'monthly_budget' => ['sometimes', 'numeric', 'min:0'],
             'currency' => ['sometimes', 'string', Rule::in(['IDR', 'USD', 'EUR', 'SGD', 'JPY'])],
-            'budget_warning_threshold' => ['sometimes', 'numeric', 'min:1', 'max:99'],
+            'budget_warning_threshold' => ['sometimes', 'numeric', 'min:1', 'max:100'],
             'notification_enabled' => ['sometimes', 'boolean'],
         ], [
             'daily_budget.numeric' => 'Budget harian harus berupa angka.',
@@ -29,7 +29,7 @@ class UserSettingsController extends ApiController
             'currency.in' => 'Mata uang tidak tersedia.',
             'budget_warning_threshold.numeric' => 'Batas peringatan harus berupa angka.',
             'budget_warning_threshold.min' => 'Batas peringatan minimal 1%.',
-            'budget_warning_threshold.max' => 'Batas peringatan maksimal 99%.',
+            'budget_warning_threshold.max' => 'Batas peringatan maksimal 100%.',
         ]);
 
         $validated['location_enabled'] = true;

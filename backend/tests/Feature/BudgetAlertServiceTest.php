@@ -52,6 +52,108 @@ class BudgetAlertServiceTest extends TestCase
         $this->assertSame([], $service->forUser($user->fresh())->all());
     }
 
+    public function test_daily_budget_alert_uses_warning_threshold(): void
+    {
+        [$user, $category] = $this->budgetFixture(
+            monthlyBudget: 10000000,
+            categoryBudget: 10000000,
+            dailyBudget: 400000,
+        );
+
+        Transaction::create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'type' => 'expense',
+            'amount' => 320000,
+            'date' => Carbon::today(),
+            'transaction_date' => Carbon::now(),
+        ]);
+
+        $alerts = app(BudgetAlertService::class)->forUser($user);
+
+        $this->assertEqualsCanonicalizing(['daily_budget'], $alerts->pluck('type')->all());
+        $this->assertSame('Daily budget hampir habis', $alerts->first()['title']);
+        $this->assertStringContainsString('80%', $alerts->first()['message']);
+        $this->assertSame(320000.0, $alerts->first()['threshold_value']);
+    }
+
+    public function test_monthly_budget_alert_uses_warning_threshold(): void
+    {
+        [$user, $category] = $this->budgetFixture(
+            monthlyBudget: 4000000,
+            categoryBudget: 10000000,
+            dailyBudget: 10000000,
+        );
+
+        Transaction::create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'type' => 'expense',
+            'amount' => 3200000,
+            'date' => Carbon::today(),
+            'transaction_date' => Carbon::now(),
+        ]);
+
+        $alerts = app(BudgetAlertService::class)->forUser($user);
+
+        $this->assertEqualsCanonicalizing(['monthly_budget'], $alerts->pluck('type')->all());
+        $this->assertSame('Monthly budget hampir habis', $alerts->first()['title']);
+        $this->assertStringContainsString('80%', $alerts->first()['message']);
+    }
+
+    public function test_category_budget_alert_uses_warning_threshold(): void
+    {
+        [$user, $category] = $this->budgetFixture(
+            monthlyBudget: 10000000,
+            categoryBudget: 500000,
+            dailyBudget: 10000000,
+        );
+
+        Transaction::create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'type' => 'expense',
+            'amount' => 400000,
+            'date' => Carbon::today(),
+            'transaction_date' => Carbon::now(),
+        ]);
+
+        $alerts = app(BudgetAlertService::class)->forUser($user);
+
+        $this->assertEqualsCanonicalizing(['category_budget'], $alerts->pluck('type')->all());
+        $this->assertSame('Budget kategori hampir habis', $alerts->first()['title']);
+        $this->assertStringContainsString('80%', $alerts->first()['message']);
+    }
+
+    public function test_threshold_change_is_used_when_settings_sync_runs(): void
+    {
+        [$user, $category] = $this->budgetFixture(
+            monthlyBudget: 1000,
+            categoryBudget: 10000000,
+            dailyBudget: 10000000,
+            threshold: 100,
+        );
+
+        Transaction::create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'type' => 'expense',
+            'amount' => 850,
+            'date' => Carbon::today(),
+            'transaction_date' => Carbon::now(),
+        ]);
+
+        $service = app(BudgetAlertService::class);
+        $this->assertSame([], $service->forUser($user)->all());
+
+        $user->userSetting()->update(['budget_warning_threshold' => 80]);
+
+        $alerts = $service->forUser($user->fresh());
+
+        $this->assertEqualsCanonicalizing(['monthly_budget'], $alerts->pluck('type')->all());
+        $this->assertStringContainsString('80%', $alerts->first()['message']);
+    }
+
     public function test_alerts_disappear_after_transaction_delete(): void
     {
         [$user, $category] = $this->budgetFixture(monthlyBudget: 1000, categoryBudget: 1000);
@@ -161,7 +263,7 @@ class BudgetAlertServiceTest extends TestCase
         $this->assertDatabaseCount('budget_alerts', 0);
     }
 
-    private function budgetFixture(float $monthlyBudget, float $categoryBudget, float $dailyBudget = 100000): array
+    private function budgetFixture(float $monthlyBudget, float $categoryBudget, float $dailyBudget = 100000, float $threshold = 80): array
     {
         $user = User::factory()->create();
 
@@ -170,7 +272,7 @@ class BudgetAlertServiceTest extends TestCase
             'daily_budget' => $dailyBudget,
             'monthly_budget' => $monthlyBudget,
             'currency' => 'IDR',
-            'budget_warning_threshold' => 80,
+            'budget_warning_threshold' => $threshold,
             'notification_enabled' => true,
             'location_enabled' => true,
         ]);
