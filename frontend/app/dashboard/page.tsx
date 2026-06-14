@@ -71,6 +71,10 @@ export default function DashboardPage() {
   const currency = displayCurrency.currency;
   const currencyRate = displayCurrency.rate;
   const displayAmount = (value: number | string) => Number(value || 0) * currencyRate;
+  const dailyBudgetUsed = summary?.daily_budget_percentage ?? 0;
+  const monthlyBudgetUsed = summary?.monthly_budget_percentage ?? 0;
+  const dailyLimitReached = dailyBudgetUsed >= 100;
+  const monthlyLimitReached = monthlyBudgetUsed >= 100;
   const expenseRatio = summary && Number(summary.total_income) > 0
     ? (Number(summary.total_expense) / Number(summary.total_income)) * 100
     : 0;
@@ -110,25 +114,33 @@ export default function DashboardPage() {
               <StatCard label="Pengeluaran" value={displayAmount(summary.total_expense)} currency={currency} tone="expense" />
               <StatCard
                 label="Sisa budget bulanan"
-                value={displayAmount(Math.max(0, Number(summary.monthly_budget) - Number(summary.total_expense)))}
+                value={displayAmount(summary.monthly_budget_remaining ?? Math.max(0, Number(summary.monthly_budget) - Number(summary.total_expense)))}
                 currency={currency}
                 tone="warning"
                 helper={`Budget: ${formatCurrency(displayAmount(summary.monthly_budget), currency)}`}
               />
             </div>
 
-            {summary.alerts?.length ? (
-              <AppCard className="border-amber-100 bg-amber-50">
-                <p className="font-black text-amber-800">Peringatan budget</p>
-                <div className="mt-3 grid gap-2">
-                  {summary.alerts.map((alert, index) => (
-                    <p key={index} className="rounded-2xl bg-white/70 px-4 py-3 text-sm font-semibold text-amber-800">
-                      {typeof alert === "string" ? alert : alert.message ?? "Budget perlu diperhatikan."}
-                    </p>
-                  ))}
-                </div>
-              </AppCard>
-            ) : null}
+            <div className="grid gap-5 lg:grid-cols-2">
+              <BudgetProgressCard
+                title="Daily budget"
+                spent={displayAmount(summary.daily_expense ?? 0)}
+                budget={displayAmount(summary.daily_budget)}
+                remaining={displayAmount(summary.daily_budget_remaining ?? 0)}
+                percentage={dailyBudgetUsed}
+                currency={currency}
+                danger={dailyLimitReached}
+              />
+              <BudgetProgressCard
+                title="Monthly budget"
+                spent={displayAmount(summary.monthly_expense ?? summary.total_expense)}
+                budget={displayAmount(summary.monthly_budget)}
+                remaining={displayAmount(summary.monthly_budget_remaining ?? 0)}
+                percentage={monthlyBudgetUsed}
+                currency={currency}
+                danger={monthlyLimitReached}
+              />
+            </div>
 
             <AppCard>
               <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -444,5 +456,50 @@ export default function DashboardPage() {
         ) : null}
       </div>
     </AppLayout>
+  );
+}
+
+function BudgetProgressCard({
+  title,
+  spent,
+  budget,
+  remaining,
+  percentage,
+  currency,
+  danger
+}: {
+  title: string;
+  spent: number;
+  budget: number;
+  remaining: number;
+  percentage: number;
+  currency: string;
+  danger: boolean;
+}) {
+  return (
+    <AppCard className={danger ? "border-red-200 bg-red-50" : "border-slate-100"}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className={`font-black ${danger ? "text-red-700" : "text-slate-900"}`}>{title}</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-400">
+            {formatCurrency(spent, currency)} dari {formatCurrency(budget, currency)}
+          </p>
+        </div>
+        {danger ? (
+          <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700">Budget habis</span>
+        ) : (
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">{Math.round(percentage)}%</span>
+        )}
+      </div>
+      <div className="mt-4 h-3 overflow-hidden rounded-full bg-white">
+        <div
+          className={`h-full rounded-full ${danger ? "bg-red-500" : percentage >= 80 ? "bg-amber-500" : "bg-poketto-500"}`}
+          style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+        />
+      </div>
+      <p className={`mt-3 text-sm font-bold ${danger ? "text-red-700" : "text-slate-500"}`}>
+        Sisa budget: {formatCurrency(remaining, currency)}
+      </p>
+    </AppCard>
   );
 }

@@ -49,12 +49,35 @@ export type ExchangeRate = {
   updated_at?: string | null;
 };
 
+export type BudgetNotification = {
+  id: number;
+  user_id?: number;
+  category_id?: number | null;
+  type: "daily_budget" | "monthly_budget" | "category_budget" | string;
+  alert_type?: string;
+  title?: string | null;
+  message: string;
+  threshold_value?: number;
+  current_value?: number;
+  period_date?: string | null;
+  period_month?: string | null;
+  is_read: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type DashboardSummary = {
   total_income: number;
   total_expense: number;
   balance: number;
   daily_budget: number;
+  daily_expense: number;
+  daily_budget_remaining: number;
+  daily_budget_percentage: number;
   monthly_budget: number;
+  monthly_expense: number;
+  monthly_budget_remaining: number;
+  monthly_budget_percentage: number;
   currency: string;
   period?: {
     start_date: string;
@@ -72,7 +95,7 @@ export type DashboardSummary = {
     percentage: number;
   }>;
   recent_transactions: Transaction[];
-  alerts: Array<{ id?: number; message?: string } | string>;
+  alerts: BudgetNotification[];
 };
 
 export type Filters = {

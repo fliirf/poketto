@@ -41,9 +41,10 @@ class DashboardController extends ApiController
         $expenseTrend = $this->expenseTrend($user->id, $period['start'], $period['end'], $filters);
         $categoryBreakdown = $this->categoryBreakdown($user->id, $period['start'], $period['end'], $filters);
         $categoryBudgets = $this->categoryBudgets($user->id, $budgetPeriod['start'], $budgetPeriod['end'], $filters);
-        $hasPeriodFilter = ! empty($filters['start_date']) || ! empty($filters['end_date']) || ! empty($filters['month']);
-        $alertDailyStart = $hasPeriodFilter ? $period['start'] : Carbon::today()->startOfDay();
-        $alertDailyEnd = $hasPeriodFilter ? $period['end'] : Carbon::today()->endOfDay();
+        $todayExpense = $this->expenseForRange($user->id, Carbon::today()->startOfDay(), Carbon::today()->endOfDay());
+        $monthExpense = $this->expenseForRange($user->id, Carbon::today()->startOfMonth(), Carbon::today()->endOfMonth());
+        $dailyBudget = (float) $settings->daily_budget;
+        $monthlyBudget = (float) $settings->monthly_budget;
         $recent = $this->applyFilters(
             Transaction::with('category')->where('user_id', $user->id),
             $filters,
@@ -72,8 +73,14 @@ class DashboardController extends ApiController
             'total_income' => (float) $totalIncome,
             'total_expense' => (float) $totalExpense,
             'balance' => (float) $totalIncome - (float) $totalExpense,
-            'daily_budget' => (float) $settings->daily_budget,
-            'monthly_budget' => (float) $settings->monthly_budget,
+            'daily_budget' => $dailyBudget,
+            'daily_expense' => (float) $todayExpense,
+            'daily_budget_remaining' => max(0, $dailyBudget - (float) $todayExpense),
+            'daily_budget_percentage' => $dailyBudget > 0 ? min(100, ((float) $todayExpense / $dailyBudget) * 100) : 0,
+            'monthly_budget' => $monthlyBudget,
+            'monthly_expense' => (float) $monthExpense,
+            'monthly_budget_remaining' => max(0, $monthlyBudget - (float) $monthExpense),
+            'monthly_budget_percentage' => $monthlyBudget > 0 ? min(100, ((float) $monthExpense / $monthlyBudget) * 100) : 0,
             'currency' => $settings->currency ?? 'IDR',
             'period' => [
                 'start_date' => $period['start']->toDateString(),
@@ -85,15 +92,23 @@ class DashboardController extends ApiController
             'category_breakdown' => $categoryBreakdown,
             'category_budgets' => $categoryBudgets,
             'recent_transactions' => $recent,
-            'alerts' => $budgetAlertService->forUser(
-                $user,
-                $alertDailyStart,
-                $alertDailyEnd,
-                $budgetPeriod['start'],
-                $budgetPeriod['end'],
-                $filters,
-            ),
+            'alerts' => $budgetAlertService->forUser($user),
         ]);
+    }
+
+    private function expenseForRange(int $userId, Carbon $start, Carbon $end): float
+    {
+        return (float) Transaction::query()
+            ->where('user_id', $userId)
+            ->where('type', 'expense')
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('transaction_date', [$start, $end])
+                    ->orWhere(function ($fallback) use ($start, $end) {
+                        $fallback->whereNull('transaction_date')
+                            ->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
+                    });
+            })
+            ->sum('amount');
     }
 
     private function categoryBudgets(int $userId, Carbon $start, Carbon $end, array $filters): array

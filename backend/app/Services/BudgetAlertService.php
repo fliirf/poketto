@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BudgetAlert;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
@@ -10,21 +11,172 @@ use Illuminate\Support\Collection;
 
 class BudgetAlertService
 {
-    public function forUser(
-        User $user,
-        ?Carbon $dailyStart = null,
-        ?Carbon $dailyEnd = null,
-        ?Carbon $categoryStart = null,
-        ?Carbon $categoryEnd = null,
-        array $filters = [],
-    ): Collection
+    public function forUser(User $user): Collection
     {
-        $alerts = collect();
-        if (($filters['type'] ?? null) === 'income') {
-            return $alerts;
+        return $this->syncForUser($user);
+    }
+
+    public function syncForUser(User $user): Collection
+    {
+        $settings = $this->settingsFor($user);
+
+        if (! $settings->notification_enabled) {
+            BudgetAlert::query()->where('user_id', $user->id)->delete();
+
+            return collect();
         }
 
-        $settings = $user->userSetting()->firstOrCreate(
+        $today = Carbon::today();
+        $month = Carbon::now()->format('Y-m');
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd = Carbon::now()->endOfMonth();
+        $warningPercent = max(1, min(100, (float) ($settings->budget_warning_threshold ?? 100)));
+        $warningRatio = $warningPercent / 100;
+        $activeAlerts = collect();
+
+        $dailyBudget = (float) $settings->daily_budget;
+        $todayExpense = $this->expenseSum($user->id, $today->copy()->startOfDay(), $today->copy()->endOfDay());
+        if ($dailyBudget > 0 && $todayExpense >= ($dailyBudget * $warningRatio)) {
+            $activeAlerts->push($this->definition(
+                user: $user,
+                key: 'daily_budget:'.$today->toDateString(),
+                type: 'daily_budget',
+                title: $todayExpense >= $dailyBudget ? 'Daily budget habis' : 'Daily budget mendekati batas',
+                message: $todayExpense >= $dailyBudget
+                    ? 'Daily budget kamu sudah mencapai limit.'
+                    : "Daily budget kamu sudah mencapai {$warningPercent}% dari limit.",
+                threshold: $dailyBudget,
+                current: $todayExpense,
+                periodDate: $today,
+            ));
+        }
+
+        $monthlyBudget = (float) $settings->monthly_budget;
+        $monthExpense = $this->expenseSum($user->id, $monthStart, $monthEnd);
+        if ($monthlyBudget > 0 && $monthExpense >= ($monthlyBudget * $warningRatio)) {
+            $activeAlerts->push($this->definition(
+                user: $user,
+                key: 'monthly_budget:'.$month,
+                type: 'monthly_budget',
+                title: $monthExpense >= $monthlyBudget ? 'Monthly budget habis' : 'Monthly budget mendekati batas',
+                message: $monthExpense >= $monthlyBudget
+                    ? 'Monthly budget kamu sudah mencapai limit.'
+                    : "Monthly budget kamu sudah mencapai {$warningPercent}% dari limit.",
+                threshold: $monthlyBudget,
+                current: $monthExpense,
+                periodMonth: $month,
+            ));
+        }
+
+        Category::query()
+            ->where('user_id', $user->id)
+            ->where('type', 'expense')
+            ->where('monthly_budget', '>', 0)
+            ->get()
+            ->each(function (Category $category) use ($activeAlerts, $user, $monthStart, $monthEnd, $month, $warningRatio, $warningPercent): void {
+                $budget = (float) $category->monthly_budget;
+                $spent = $this->expenseSum($user->id, $monthStart, $monthEnd, $category->id);
+
+                if ($spent < ($budget * $warningRatio)) {
+                    return;
+                }
+
+                $activeAlerts->push($this->definition(
+                    user: $user,
+                    key: "category_budget:{$category->id}:{$month}",
+                    type: 'category_budget',
+                    title: $spent >= $budget ? 'Budget kategori habis' : 'Budget kategori mendekati batas',
+                    message: $spent >= $budget
+                        ? "Budget kategori {$category->name} sudah mencapai limit."
+                        : "Budget kategori {$category->name} sudah mencapai {$warningPercent}% dari limit.",
+                    threshold: $budget,
+                    current: $spent,
+                    categoryId: $category->id,
+                    periodMonth: $month,
+                ));
+            });
+
+        $activeKeys = $activeAlerts->pluck('alert_key')->all();
+        BudgetAlert::query()
+            ->where('user_id', $user->id)
+            ->when($activeKeys !== [], fn ($query) => $query->whereNotIn('alert_key', $activeKeys))
+            ->delete();
+
+        $activeAlerts->each(function (array $alert): void {
+            BudgetAlert::query()->updateOrCreate(
+                ['user_id' => $alert['user_id'], 'alert_key' => $alert['alert_key']],
+                collect($alert)->except(['user_id', 'alert_key'])->all(),
+            );
+        });
+
+        return BudgetAlert::query()
+            ->with('category')
+            ->where('user_id', $user->id)
+            ->whereIn('alert_key', $activeKeys)
+            ->latest()
+            ->get()
+            ->map(fn (BudgetAlert $alert) => $this->serialize($alert))
+            ->values();
+    }
+
+    public function markAsRead(User $user, BudgetAlert $alert): BudgetAlert
+    {
+        abort_if($alert->user_id !== $user->id, 404);
+
+        $alert->forceFill(['is_read' => true])->save();
+
+        return $alert->fresh();
+    }
+
+    private function definition(
+        User $user,
+        string $key,
+        string $type,
+        string $title,
+        string $message,
+        float $threshold,
+        float $current,
+        ?int $categoryId = null,
+        ?Carbon $periodDate = null,
+        ?string $periodMonth = null,
+    ): array {
+        return [
+            'user_id' => $user->id,
+            'category_id' => $categoryId,
+            'alert_key' => $key,
+            'alert_type' => $type,
+            'title' => $title,
+            'message' => $message,
+            'threshold_value' => $threshold,
+            'current_value' => $current,
+            'period_date' => $periodDate?->toDateString(),
+            'period_month' => $periodMonth,
+        ];
+    }
+
+    private function serialize(BudgetAlert $alert): array
+    {
+        return [
+            'id' => $alert->id,
+            'user_id' => $alert->user_id,
+            'category_id' => $alert->category_id,
+            'type' => $alert->alert_type,
+            'alert_type' => $alert->alert_type,
+            'title' => $alert->title,
+            'message' => $alert->message,
+            'threshold_value' => (float) $alert->threshold_value,
+            'current_value' => (float) $alert->current_value,
+            'period_date' => $alert->period_date?->toDateString(),
+            'period_month' => $alert->period_month,
+            'is_read' => (bool) $alert->is_read,
+            'created_at' => optional($alert->created_at)->toISOString(),
+            'updated_at' => optional($alert->updated_at)->toISOString(),
+        ];
+    }
+
+    private function settingsFor(User $user)
+    {
+        return $user->userSetting()->firstOrCreate(
             ['user_id' => $user->id],
             [
                 'daily_budget' => 100000,
@@ -35,138 +187,14 @@ class BudgetAlertService
                 'location_enabled' => true,
             ],
         );
-        $warningPercent = max(1, min(99, (float) ($settings->budget_warning_threshold ?? 80)));
-        $warningLabel = rtrim(rtrim(number_format($warningPercent, 2, '.', ''), '0'), '.');
-        $warningRatio = max(1, min(99, $warningPercent)) / 100;
-        $dailyStart ??= Carbon::today()->startOfDay();
-        $dailyEnd ??= Carbon::today()->endOfDay();
-        $categoryStart ??= Carbon::now()->startOfMonth();
-        $categoryEnd ??= Carbon::now()->endOfMonth();
-        $periodExpense = $this->expenseSum($user->id, $categoryStart, $categoryEnd, $filters);
-        $monthlyBudget = (float) $settings->monthly_budget;
-        $monthlyBudgetIsStillSafe = $monthlyBudget > 0 && $periodExpense < ($monthlyBudget * $warningRatio);
-
-        if ($monthlyBudgetIsStillSafe) {
-            return $alerts;
-        }
-
-        if ($dailyStart->toDateString() === $dailyEnd->toDateString()) {
-            $todayExpense = Transaction::query()
-                ->where('user_id', $user->id)
-                ->where('type', 'expense')
-                ->when(! empty($filters['category_id']), fn ($query) => $query->where('category_id', $filters['category_id']))
-                ->where(function ($query) use ($dailyStart, $dailyEnd) {
-                    $query->whereBetween('transaction_date', [$dailyStart, $dailyEnd])
-                        ->orWhere(function ($fallback) use ($dailyStart, $dailyEnd) {
-                            $fallback->whereNull('transaction_date')
-                                ->whereBetween('date', [$dailyStart->toDateString(), $dailyEnd->toDateString()]);
-                        });
-                })
-                ->sum('amount');
-
-            $dailyBudget = (float) $settings->daily_budget;
-            if ($dailyBudget > 0 && $todayExpense >= $dailyBudget) {
-                $alerts->push([
-                    'id' => 0,
-                    'user_id' => $user->id,
-                    'category_id' => null,
-                    'alert_type' => 'daily_budget',
-                    'message' => 'Jangan belanja lagi! Budget harian sudah habis.',
-                    'threshold_value' => (float) $settings->daily_budget,
-                    'current_value' => (float) $todayExpense,
-                    'is_read' => false,
-                    'created_at' => now()->toISOString(),
-                ]);
-            } elseif ($dailyBudget > 0 && $todayExpense >= ($dailyBudget * $warningRatio)) {
-                $alerts->push([
-                    'id' => 0,
-                    'user_id' => $user->id,
-                    'category_id' => null,
-                    'alert_type' => 'daily_budget_warning',
-                    'message' => "Peringatan! Pengeluaran harian sudah mencapai {$warningLabel}% dari budget.",
-                    'threshold_value' => $dailyBudget,
-                    'current_value' => (float) $todayExpense,
-                    'is_read' => false,
-                    'created_at' => now()->toISOString(),
-                ]);
-            }
-        }
-
-        if ($monthlyBudget > 0 && $periodExpense >= $monthlyBudget) {
-            $alerts->push([
-                'id' => 0,
-                'user_id' => $user->id,
-                'category_id' => null,
-                'alert_type' => 'monthly_budget',
-                'message' => 'Jangan belanja lagi! Budget bulanan sudah habis.',
-                'threshold_value' => $monthlyBudget,
-                'current_value' => (float) $periodExpense,
-                'is_read' => false,
-                'created_at' => now()->toISOString(),
-            ]);
-        } elseif ($monthlyBudget > 0 && $periodExpense >= ($monthlyBudget * $warningRatio)) {
-            $alerts->push([
-                'id' => 0,
-                'user_id' => $user->id,
-                'category_id' => null,
-                'alert_type' => 'monthly_budget_warning',
-                'message' => "Peringatan! Pengeluaran bulanan sudah mencapai {$warningLabel}% dari budget.",
-                'threshold_value' => $monthlyBudget,
-                'current_value' => (float) $periodExpense,
-                'is_read' => false,
-                'created_at' => now()->toISOString(),
-            ]);
-        }
-
-        Category::query()
-            ->where('user_id', $user->id)
-            ->where('type', 'expense')
-            ->where('monthly_budget', '>', 0)
-            ->when(! empty($filters['category_id']), fn ($query) => $query->where('id', $filters['category_id']))
-            ->get()
-            ->each(function (Category $category) use ($alerts, $categoryStart, $categoryEnd, $user, $warningRatio, $warningLabel): void {
-                $spent = Transaction::query()
-                    ->where('user_id', $user->id)
-                    ->where('category_id', $category->id)
-                    ->where('type', 'expense')
-                    ->where(function ($query) use ($categoryStart, $categoryEnd) {
-                        $query->whereBetween('transaction_date', [$categoryStart, $categoryEnd])
-                            ->orWhere(function ($fallback) use ($categoryStart, $categoryEnd) {
-                                $fallback->whereNull('transaction_date')
-                                    ->whereBetween('date', [$categoryStart->toDateString(), $categoryEnd->toDateString()]);
-                            });
-                    })
-                    ->sum('amount');
-
-                $threshold = (float) $category->monthly_budget * $warningRatio;
-                if ($spent >= $threshold) {
-                    $alerts->push([
-                        'id' => 0,
-                        'user_id' => $user->id,
-                        'category_id' => $category->id,
-                        'alert_type' => 'category_budget',
-                        'message' => "Peringatan! Pengeluaran kategori {$category->name} telah mencapai {$warningLabel}% dari budget bulanan.",
-                        'threshold_value' => (float) $category->monthly_budget,
-                        'current_value' => (float) $spent,
-                        'is_read' => false,
-                        'created_at' => now()->toISOString(),
-                    ]);
-                }
-            });
-
-        return $alerts->values();
     }
 
-    private function expenseSum(int $userId, Carbon $start, Carbon $end, array $filters = []): float
+    private function expenseSum(int $userId, Carbon $start, Carbon $end, ?int $categoryId = null): float
     {
-        if (($filters['type'] ?? null) === 'income') {
-            return 0;
-        }
-
         return (float) Transaction::query()
             ->where('user_id', $userId)
             ->where('type', 'expense')
-            ->when(! empty($filters['category_id']), fn ($query) => $query->where('category_id', $filters['category_id']))
+            ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
             ->where(function ($query) use ($start, $end) {
                 $query->whereBetween('transaction_date', [$start, $end])
                     ->orWhere(function ($fallback) use ($start, $end) {

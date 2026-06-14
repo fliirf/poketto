@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Category;
+use App\Services\BudgetAlertService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -33,6 +34,7 @@ class CategoryController extends ApiController
             'type' => $validated['type'] ?? 'expense',
             'monthly_budget' => $validated['monthly_budget'] ?? 0,
         ]);
+        app(BudgetAlertService::class)->syncForUser($request->user());
 
         return $this->success(['category' => $category], 'Kategori berhasil ditambahkan.', 201);
     }
@@ -55,6 +57,7 @@ class CategoryController extends ApiController
         ], $this->validationMessages());
 
         $category->update($validated);
+        app(BudgetAlertService::class)->syncForUser($request->user());
 
         return $this->success(['category' => $category->fresh()], 'Kategori berhasil diperbarui.');
     }
@@ -63,6 +66,7 @@ class CategoryController extends ApiController
     {
         $this->authorizeCategory($request, $category);
         $category->delete();
+        app(BudgetAlertService::class)->syncForUser($request->user());
 
         return $this->success(null, 'Kategori berhasil dihapus.');
     }

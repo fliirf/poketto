@@ -1,5 +1,6 @@
 import type {
   Category,
+  BudgetNotification,
   DashboardSummary,
   ExchangeRate,
   Filters,
@@ -209,7 +210,15 @@ export const api = {
     });
   },
   async budgetAlerts() {
-    return request<{ alerts: DashboardSummary["alerts"] }>("/budget-alerts");
+    return request<{ alerts: BudgetNotification[] }>("/budget-alerts");
+  },
+  async notifications() {
+    return request<{ alerts: BudgetNotification[] }>("/notifications");
+  },
+  async markNotificationRead(id: number) {
+    return request<{ notification: { id: number; is_read: boolean } }>(`/notifications/${id}/read`, {
+      method: "PATCH"
+    });
   },
   async exchangeRates(base = "IDR") {
     return request<{ exchange_rates: ExchangeRate[] }>(`/exchange-rates${buildQuery({ base })}`);

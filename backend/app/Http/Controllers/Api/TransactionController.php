@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Category;
 use App\Models\Transaction;
+use App\Services\BudgetAlertService;
 use App\Services\ExchangeRateService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -53,6 +54,7 @@ class TransactionController extends ApiController
             'location_lng' => $validated['location_lng'] ?? $request->input('longitude') ?? $request->input('lng'),
             'location_name' => $validated['location_name'] ?? $request->input('address'),
         ]);
+        app(BudgetAlertService::class)->syncForUser($request->user());
 
         $typeMessage = $validated['type'] === 'income'
             ? 'Berhasil tambah pemasukan.'
@@ -93,6 +95,7 @@ class TransactionController extends ApiController
         $payload['location_name'] = $request->input('location_name', $request->input('address', $transaction->location_name));
 
         $transaction->update($payload);
+        app(BudgetAlertService::class)->syncForUser($request->user());
 
         return $this->success([
             'transaction' => $this->serializeTransaction($transaction->fresh()->load('category')),
@@ -103,6 +106,7 @@ class TransactionController extends ApiController
     {
         $this->authorizeTransaction($request, $transaction);
         $transaction->delete();
+        app(BudgetAlertService::class)->syncForUser($request->user());
 
         return $this->success(null, 'Transaksi berhasil dihapus.');
     }

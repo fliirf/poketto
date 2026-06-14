@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Services\BudgetAlertService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -19,6 +20,7 @@ class UserSettingsController extends ApiController
             'monthly_budget' => ['sometimes', 'numeric', 'min:0'],
             'currency' => ['sometimes', 'string', Rule::in(['IDR', 'USD', 'EUR', 'SGD', 'JPY'])],
             'budget_warning_threshold' => ['sometimes', 'numeric', 'min:1', 'max:99'],
+            'notification_enabled' => ['sometimes', 'boolean'],
         ], [
             'daily_budget.numeric' => 'Budget harian harus berupa angka.',
             'daily_budget.min' => 'Budget harian tidak boleh negatif.',
@@ -30,11 +32,11 @@ class UserSettingsController extends ApiController
             'budget_warning_threshold.max' => 'Batas peringatan maksimal 99%.',
         ]);
 
-        $validated['notification_enabled'] = true;
         $validated['location_enabled'] = true;
 
         $settings = $this->settings($request);
         $settings->update($validated);
+        app(BudgetAlertService::class)->syncForUser($request->user());
 
         return $this->success(['user_settings' => $settings->fresh()], 'Settings berhasil disimpan.');
     }
@@ -53,9 +55,8 @@ class UserSettingsController extends ApiController
             ],
         );
 
-        if (! $settings->notification_enabled || ! $settings->location_enabled) {
+        if (! $settings->location_enabled) {
             $settings->forceFill([
-                'notification_enabled' => true,
                 'location_enabled' => true,
             ])->save();
         }

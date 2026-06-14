@@ -26,5 +26,7 @@ Route::middleware('auth:sanctum')->name('api.')->group(function () {
     Route::put('/user-settings', [UserSettingsController::class, 'update']);
 
     Route::get('/budget-alerts', [BudgetAlertController::class, 'index']);
+    Route::get('/notifications', [BudgetAlertController::class, 'index']);
+    Route::patch('/notifications/{notification}/read', [BudgetAlertController::class, 'markAsRead']);
     Route::get('/exchange-rates', [ExchangeRateController::class, 'index']);
 });
