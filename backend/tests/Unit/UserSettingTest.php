@@ -27,4 +27,16 @@ class UserSettingTest extends TestCase
         $this->assertSame('true', $settings->getAttributes()['notification_enabled']);
         $this->assertSame('false', $settings->getAttributes()['location_enabled']);
     }
+
+    public function test_postgres_boolean_shorthand_values_are_read_correctly(): void
+    {
+        $settings = new UserSetting();
+        $settings->setRawAttributes([
+            'notification_enabled' => 't',
+            'location_enabled' => 'f',
+        ]);
+
+        $this->assertTrue($settings->notification_enabled);
+        $this->assertFalse($settings->location_enabled);
+    }
 }

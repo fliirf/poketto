@@ -31,7 +31,7 @@ class UserSetting extends Model
 
     public function getNotificationEnabledAttribute($value): bool
     {
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        return $this->booleanFromDatabase($value);
     }
 
     public function setLocationEnabledAttribute($value): void
@@ -41,18 +41,43 @@ class UserSetting extends Model
 
     public function getLocationEnabledAttribute($value): bool
     {
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        return $this->booleanFromDatabase($value);
     }
 
     private function booleanForDatabase($value): bool|string
     {
-        $boolean = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        $boolean = $this->booleanFromDatabase($value);
 
         if ($this->getConnection()->getDriverName() === 'pgsql') {
             return $boolean ? 'true' : 'false';
         }
 
         return $boolean;
+    }
+
+    private function booleanFromDatabase($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value === 1;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+
+            if (in_array($normalized, ['1', 'true', 't', 'yes', 'on'], true)) {
+                return true;
+            }
+
+            if (in_array($normalized, ['0', 'false', 'f', 'no', 'off', ''], true)) {
+                return false;
+            }
+        }
+
+        return (bool) $value;
     }
 
     public function user()
