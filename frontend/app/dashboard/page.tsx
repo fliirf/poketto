@@ -19,6 +19,15 @@ const importantCurrencies = ["USD", "EUR", "SGD", "JPY"];
 const pieColors = ["#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#64748b", "#3b82f6"];
 type RateDirection = "idr-to-target" | "target-to-idr";
 type PeriodMode = "today" | "week" | "month" | "year" | "custom";
+type TrendMode = "auto" | "daily" | "weekly" | "monthly";
+type ResolvedTrendMode = "daily" | "weekly" | "monthly";
+type TrendPoint = {
+  key: string;
+  label: string;
+  tooltipLabel: string;
+  total: number;
+  date?: string;
+};
 
 const defaultPeriodMode: PeriodMode = "month";
 
@@ -82,6 +91,71 @@ function buildDashboardFilters(
   };
 }
 
+function dateFromParam(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function shortDateLabel(value: string) {
+  return dateFromParam(value).toLocaleDateString("id-ID", { day: "2-digit", month: "short" });
+}
+
+function shortMonthLabel(value: string) {
+  return dateFromParam(`${value}-01`).toLocaleDateString("id-ID", { month: "short", year: "2-digit" });
+}
+
+function resolveTrendMode(points: Array<{ date: string }>, mode: TrendMode): ResolvedTrendMode {
+  if (mode !== "auto") return mode;
+  if (points.length > 90) return "monthly";
+  if (points.length > 31) return "weekly";
+  return "daily";
+}
+
+function aggregateTrend(points: Array<{ date: string; label?: string; total: number }>, mode: ResolvedTrendMode): TrendPoint[] {
+  if (mode === "daily") {
+    return points.map((point) => ({
+      key: point.date,
+      date: point.date,
+      label: shortDateLabel(point.date),
+      tooltipLabel: shortDateLabel(point.date),
+      total: Number(point.total || 0)
+    }));
+  }
+
+  if (mode === "monthly") {
+    const grouped = new Map<string, TrendPoint>();
+    points.forEach((point) => {
+      const month = point.date.slice(0, 7);
+      const current = grouped.get(month);
+      grouped.set(month, {
+        key: month,
+        label: shortMonthLabel(month),
+        tooltipLabel: shortMonthLabel(month),
+        total: (current?.total ?? 0) + Number(point.total || 0)
+      });
+    });
+
+    return Array.from(grouped.values());
+  }
+
+  const grouped = new Map<string, TrendPoint>();
+  points.forEach((point, index) => {
+    const weekIndex = Math.floor(index / 7) + 1;
+    const key = `week-${weekIndex}`;
+    const current = grouped.get(key);
+    const label = `Minggu ${weekIndex}`;
+    grouped.set(key, {
+      key,
+      label,
+      tooltipLabel: current ? `${shortDateLabel(current.date ?? point.date)} - ${shortDateLabel(point.date)}` : shortDateLabel(point.date),
+      date: current?.date ?? point.date,
+      total: (current?.total ?? 0) + Number(point.total || 0)
+    });
+  });
+
+  return Array.from(grouped.values());
+}
+
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -100,6 +174,15 @@ export default function DashboardPage() {
   const [ratesLoading, setRatesLoading] = useState(true);
   const [settingsCurrency, setSettingsCurrency] = useState("IDR");
   const [rateDirection, setRateDirection] = useState<RateDirection>("idr-to-target");
+  const [trendMode, setTrendMode] = useState<TrendMode>("auto");
+
+  function resetFilters() {
+    setPeriodMode(defaultPeriodMode);
+    setCustomRange({});
+    setFilterOptions({});
+    setAdvancedOpen(false);
+    setTrendMode("auto");
+  }
 
   function loadRates() {
     setRatesLoading(true);
@@ -187,12 +270,7 @@ export default function DashboardPage() {
           onCustomRangeChange={setCustomRange}
           onFilterOptionsChange={setFilterOptions}
           onAdvancedToggle={() => setAdvancedOpen((current) => !current)}
-          onReset={() => {
-            setPeriodMode(defaultPeriodMode);
-            setCustomRange({});
-            setFilterOptions({});
-            setAdvancedOpen(false);
-          }}
+          onReset={resetFilters}
         />
 
         {loading ? <LoadingState /> : null}
@@ -350,54 +428,29 @@ export default function DashboardPage() {
 
             <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
               <AppCard>
-                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="font-black text-slate-900">Tren pengeluaran harian</h2>
-                    <p className="text-sm font-semibold text-slate-400">
-                      Total periode ini: <span className="text-poketto-700">{formatCurrency(displayAmount(summary.total_expense), currency)}</span>
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
-                    {summary.period?.label ?? "Periode terpilih"}
-                  </span>
-                </div>
-                <div className="flex h-72 items-end gap-2 rounded-2xl bg-slate-50 p-4">
-                  {summary.expense_trend.length ? (
-                    summary.expense_trend.map((item) => {
-                      const max = Math.max(...summary.expense_trend.map((trend) => Number(trend.total || 0)), 1);
-                      const total = Number(item.total || 0);
-                      const isHighest = total === max && max > 0;
-                      return (
-                        <div key={item.date} className="group relative flex flex-1 flex-col items-center gap-2">
-                          <div className="pointer-events-none absolute -top-8 z-10 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                            {formatCurrency(displayAmount(item.total), currency)}
-                          </div>
-                          <span className={`text-[0.65rem] font-bold ${total > 0 ? "text-poketto-700" : "text-slate-300"}`}>
-                            {total > 0 ? formatCurrency(displayAmount(item.total), currency) : "-"}
-                          </span>
-                          <div
-                            className={`w-full rounded-t-xl transition hover:brightness-110 ${isHighest ? "bg-poketto-700" : "bg-poketto-500"} ${total > 0 ? "" : "opacity-35"}`}
-                            style={{ height: `${Math.max(8, (total / max) * 210)}px` }}
-                            title={formatCurrency(displayAmount(item.total), currency)}
-                          />
-                          <span className="text-[0.7rem] font-bold text-slate-400">{item.label ?? item.date.slice(5)}</span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <EmptyState title="Belum ada tren" />
-                  )}
-                </div>
+                <ExpenseTrendChart
+                  points={summary.expense_trend}
+                  totalExpense={displayAmount(summary.total_expense)}
+                  currency={currency}
+                  mode={trendMode}
+                  onModeChange={setTrendMode}
+                  periodLabel={summary.period?.label ?? "Periode terpilih"}
+                  displayAmount={displayAmount}
+                />
               </AppCard>
 
               <AppCard>
                 <h2 className="font-black text-slate-900">Budget kategori</h2>
                 <div className="mt-4 grid gap-4">
                   {summary.category_budgets.length ? (
-                    summary.category_budgets.map((budget) => (
+                    summary.category_budgets.map((budget) => {
+                      const percentage = Number(budget.percentage || 0);
+                      const cappedPercentage = Math.min(100, Math.max(0, percentage));
+
+                      return (
                         <div key={budget.category_id}>
-                          <div className="mb-2 flex justify-between text-sm">
-                            <span className="font-bold text-slate-700">{budget.category_name}</span>
+                          <div className="mb-2 flex justify-between gap-3 text-sm">
+                            <span className="min-w-0 truncate font-bold text-slate-700">{budget.category_name}</span>
                             <span className={`font-bold ${budget.percentage >= 100 ? "text-red-600" : budget.percentage >= summary.budget_warning_threshold ? "text-amber-600" : "text-slate-500"}`}>
                               {Math.round(budget.percentage)}%
                             </span>
@@ -405,7 +458,7 @@ export default function DashboardPage() {
                           <div className="h-3 rounded-full bg-slate-100">
                             <div
                               className={`h-3 rounded-full ${budget.percentage >= 100 ? "bg-red-500" : budget.percentage >= summary.budget_warning_threshold ? "bg-amber-500" : "bg-poketto-500"}`}
-                              style={{ width: `${Math.min(100, budget.percentage)}%` }}
+                              style={{ width: `${cappedPercentage}%` }}
                             />
                           </div>
                           <p className="mt-1 text-xs text-slate-400">
@@ -417,7 +470,8 @@ export default function DashboardPage() {
                             ) : null}
                           </p>
                         </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <EmptyState title="Belum ada budget kategori" />
                   )}
@@ -461,20 +515,25 @@ export default function DashboardPage() {
               </AppCard>
             ) : null}
 
-            <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+            <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.8fr)]">
               <AppCard>
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="font-black text-slate-900">Transaksi terbaru</h2>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-black text-slate-900">Transaksi terbaru</h2>
+                    <p className="mt-1 text-xs font-semibold text-slate-400">Aktivitas terakhir yang tercatat.</p>
+                  </div>
                   <AppLinkButton href="/transactions" variant="secondary">
                     Lihat semua
                   </AppLinkButton>
                 </div>
-                <TransactionTable transactions={summary.recent_transactions} currency={currency} currencyRate={currencyRate} />
+                <div className="max-h-[24rem] overflow-y-auto pr-1">
+                  <TransactionTable transactions={summary.recent_transactions} currency={currency} currencyRate={currencyRate} compact />
+                </div>
               </AppCard>
 
-              <AppCard>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+              <AppCard className="min-w-0 2xl:min-w-96">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <h2 className="font-black text-slate-900">Kurs mata uang</h2>
                     <p className="mt-1 text-xs font-semibold text-slate-400">
                       Base {baseCurrency}
@@ -485,7 +544,7 @@ export default function DashboardPage() {
                     type="button"
                     onClick={loadRates}
                     disabled={ratesLoading}
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:text-poketto-700 disabled:opacity-60"
+                    className="h-9 shrink-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:text-poketto-700 disabled:opacity-60"
                   >
                     Coba lagi
                   </button>
@@ -506,7 +565,7 @@ export default function DashboardPage() {
                     Kurs ke IDR
                   </button>
                 </div>
-                <div className="mt-4 grid gap-3">
+                <div className="mt-4 grid gap-2">
                   {ratesLoading ? (
                     <div className="rounded-2xl bg-slate-50 px-4 py-5 text-sm font-semibold text-slate-500">Memuat kurs mata uang...</div>
                   ) : visibleRates.length ? (
@@ -681,6 +740,123 @@ function CompactField({ label, children }: { label: string; children: React.Reac
       <span>{label}</span>
       {children}
     </label>
+  );
+}
+
+function ExpenseTrendChart({
+  points,
+  totalExpense,
+  currency,
+  mode,
+  onModeChange,
+  periodLabel,
+  displayAmount
+}: {
+  points: Array<{ date: string; label?: string; total: number }>;
+  totalExpense: number;
+  currency: string;
+  mode: TrendMode;
+  onModeChange: (mode: TrendMode) => void;
+  periodLabel: string;
+  displayAmount: (value: number | string) => number;
+}) {
+  const resolvedMode = resolveTrendMode(points, mode);
+  const trendPoints = aggregateTrend(points, resolvedMode);
+  const hasExpense = trendPoints.some((point) => point.total > 0);
+  const max = Math.max(...trendPoints.map((point) => Number(point.total || 0)), 1);
+  const compact = resolvedMode !== "daily" || trendPoints.length > 7;
+  const xLabelInterval = resolvedMode === "daily"
+    ? trendPoints.length > 21 ? 5 : trendPoints.length > 7 ? 3 : 1
+    : 1;
+  const topValueKeys = new Set(
+    trendPoints
+      .filter((point) => point.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, compact ? 3 : trendPoints.length)
+      .map((point) => point.key)
+  );
+  const minBarWidth = resolvedMode === "daily" && trendPoints.length > 14 ? 22 : 36;
+  const chartMinWidth = Math.max(0, trendPoints.length * minBarWidth);
+  const modeLabel = resolvedMode === "daily" ? "Harian" : resolvedMode === "weekly" ? "Mingguan" : "Bulanan";
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-black text-slate-900">Tren pengeluaran harian</h2>
+            <span className="rounded-full bg-poketto-50 px-3 py-1 text-xs font-black text-poketto-700">{modeLabel}</span>
+          </div>
+          <p className="mt-1 text-sm font-semibold text-slate-400">
+            Total periode ini: <span className="text-poketto-700">{formatCurrency(totalExpense, currency)}</span>
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="grid grid-cols-4 rounded-2xl bg-slate-100 p-1 text-xs font-black text-slate-500">
+            {[
+              ["auto", "Auto"],
+              ["daily", "Harian"],
+              ["weekly", "Mingguan"],
+              ["monthly", "Bulanan"]
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onModeChange(value as TrendMode)}
+                className={`rounded-xl px-2 py-2 transition ${mode === value ? "bg-white text-poketto-700 shadow-sm" : "hover:text-slate-800"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
+            {periodLabel}
+          </span>
+        </div>
+      </div>
+
+      {!hasExpense ? (
+        <div className="grid h-72 place-items-center rounded-2xl bg-slate-50 p-4">
+          <EmptyState title="Belum ada pengeluaran pada periode ini." />
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-2xl bg-slate-50">
+          <div
+            className="flex h-80 items-end gap-2 p-4"
+            style={{ minWidth: chartMinWidth ? `${chartMinWidth}px` : undefined }}
+          >
+            {trendPoints.map((item, index) => {
+              const total = Number(item.total || 0);
+              const isHighest = total === max && max > 0;
+              const shouldShowValue = topValueKeys.has(item.key);
+              const shouldShowXAxis = index % xLabelInterval === 0 || index === trendPoints.length - 1;
+              const barHeight = total > 0 ? Math.max(10, (total / max) * 210) : 6;
+
+              return (
+                <div key={item.key} className="group relative flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <div className="pointer-events-none absolute -top-10 z-10 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-xs font-bold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    {item.tooltipLabel}: {formatCurrency(displayAmount(total), currency)}
+                  </div>
+                  <span className={`h-4 text-[0.65rem] font-bold ${shouldShowValue ? "text-poketto-700" : "text-transparent"}`}>
+                    {shouldShowValue ? formatCurrency(displayAmount(total), currency) : "-"}
+                  </span>
+                  <div
+                    className={`w-full rounded-t-xl transition hover:brightness-110 ${
+                      isHighest ? "bg-poketto-700" : total > 0 ? "bg-poketto-500" : "bg-slate-200"
+                    } ${total > 0 ? "" : "opacity-50"}`}
+                    style={{ height: `${barHeight}px` }}
+                    title={`${item.tooltipLabel}: ${formatCurrency(displayAmount(total), currency)}`}
+                  />
+                  <span className={`h-4 text-[0.65rem] font-bold ${shouldShowXAxis ? "text-slate-400" : "text-transparent"}`}>
+                    {shouldShowXAxis ? item.label : "-"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
