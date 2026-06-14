@@ -152,6 +152,8 @@ export default function TransactionsPage() {
     try {
       await api.deleteTransaction(id);
       setTransactions((current) => current.filter((transaction) => transaction.id !== id));
+      window.dispatchEvent(new Event("poketto:budget-refresh"));
+      window.dispatchEvent(new Event("poketto:notifications-refresh"));
       toast.success("Transaksi berhasil dihapus.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Transaksi gagal dihapus.";

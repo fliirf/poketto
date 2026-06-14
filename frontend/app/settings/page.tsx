@@ -62,6 +62,8 @@ export default function SettingsPage() {
       setMonthlyBudgetInput(formatNumberInput(userSettings.monthly_budget));
       setThresholdInput(String(Math.round(Number(userSettings.budget_warning_threshold ?? threshold))));
       setStoredCurrency(userSettings.currency);
+      window.dispatchEvent(new Event("poketto:budget-refresh"));
+      window.dispatchEvent(new Event("poketto:notifications-refresh"));
       toast.success("Settings berhasil disimpan.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Settings gagal disimpan.";

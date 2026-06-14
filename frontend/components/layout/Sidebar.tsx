@@ -2,9 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { classNames } from "@/lib/format";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+
+type SidebarBudget = {
+  limit: number;
+  used: number;
+};
 
 const items = [
   { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
@@ -17,6 +24,52 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const pathname = usePathname();
   const { user } = useAuth();
   const userInitial = (user?.name?.trim()?.charAt(0) || "U").toUpperCase();
+  const [budget, setBudget] = useState<SidebarBudget | null>(null);
+  const [budgetLoading, setBudgetLoading] = useState(true);
+  const [budgetError, setBudgetError] = useState(false);
+  const limit = Number(budget?.limit ?? 0);
+  const used = Number(budget?.used ?? 0);
+  const progressRaw = limit > 0 ? (used / limit) * 100 : 0;
+  const progress = Math.min(Math.max(progressRaw, 0), 100);
+  const progressLabel = `${Math.round(progress)}%`;
+  const hasBudget = limit > 0;
+  const overLimit = hasBudget && used >= limit;
+  const budgetStatus = budgetStatusText(progressRaw, hasBudget);
+  const budgetTip = budgetTipText(progressRaw, hasBudget);
+  const progressTone = overLimit ? "bg-red-500" : progress >= 80 ? "bg-amber-500" : "bg-[#ff8c42]";
+
+  const loadSidebarBudget = useCallback(() => {
+    if (!user) {
+      setBudget(null);
+      setBudgetLoading(false);
+      return;
+    }
+
+    setBudgetLoading(true);
+    setBudgetError(false);
+    api
+      .dashboard()
+      .then((summary) => {
+        setBudget({
+          limit: Number(summary.monthly_budget || 0),
+          used: Number(summary.monthly_expense || 0),
+        });
+      })
+      .catch(() => {
+        setBudget(null);
+        setBudgetError(true);
+      })
+      .finally(() => setBudgetLoading(false));
+  }, [user]);
+
+  useEffect(() => {
+    loadSidebarBudget();
+  }, [loadSidebarBudget]);
+
+  useEffect(() => {
+    window.addEventListener("poketto:budget-refresh", loadSidebarBudget);
+    return () => window.removeEventListener("poketto:budget-refresh", loadSidebarBudget);
+  }, [loadSidebarBudget]);
 
   return (
     <>
@@ -81,13 +134,23 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-normal text-poketto-700">Budget bulan ini</p>
-                  <p className="mt-1 text-sm font-bold leading-5 text-slate-600">Pantau budget kamu tetap rapi.</p>
+                  <p className="mt-1 text-sm font-bold leading-5 text-slate-600">
+                    {budgetLoading ? "Memuat budget..." : budgetError ? "Budget belum bisa dimuat." : budgetStatus}
+                  </p>
                 </div>
-                <span className="rounded-full bg-poketto-50 px-2 py-1 text-xs font-black text-poketto-700">72%</span>
+                <span className={classNames(
+                  "rounded-full px-2 py-1 text-xs font-black",
+                  overLimit ? "bg-red-50 text-red-700" : progress >= 80 ? "bg-amber-50 text-amber-700" : "bg-poketto-50 text-poketto-700"
+                )}>
+                  {budgetLoading || budgetError ? "--" : hasBudget ? progressLabel : "0%"}
+                </span>
               </div>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-orange-100/70">
-                <div className="h-full w-[72%] rounded-full bg-[#ff8c42]" />
+                <div className={`h-full rounded-full transition-all ${progressTone}`} style={{ width: `${budgetLoading || budgetError ? 0 : progress}%` }} />
               </div>
+              <p className="mt-3 text-xs font-semibold leading-5 text-slate-500">
+                {budgetLoading ? "Mengecek ringkasan bulan ini..." : budgetError ? "Coba buka dashboard untuk memuat ulang." : budgetTip}
+              </p>
             </div>
 
             <div className="flex items-center gap-3 rounded-3xl border border-white/70 bg-white/55 p-3 shadow-sm backdrop-blur">
@@ -104,6 +167,22 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       </aside>
     </>
   );
+}
+
+function budgetStatusText(progress: number, hasBudget: boolean) {
+  if (!hasBudget) return "Atur budget bulanan dulu.";
+  if (progress >= 100) return "Budget bulan ini habis.";
+  if (progress >= 80) return "Mendekati limit budget.";
+  if (progress >= 50) return "Pengeluaran mulai naik.";
+  return "Budget kamu masih aman.";
+}
+
+function budgetTipText(progress: number, hasBudget: boolean) {
+  if (!hasBudget) return "Budget membantu kamu punya batas jelas.";
+  if (progress >= 100) return "Evaluasi pengeluaran terbesar bulan ini.";
+  if (progress >= 80) return "Kurangi transaksi impulsif hari ini.";
+  if (progress >= 50) return "Cek kategori yang paling besar.";
+  return "Pertahankan ritme pengeluaran.";
 }
 
 function DashboardIcon() {
