@@ -6,6 +6,7 @@ use App\Models\BudgetAlert;
 use App\Models\Category;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -18,84 +19,15 @@ class BudgetAlertService
 
     public function syncForUser(User $user): Collection
     {
-        $settings = $this->settingsFor($user);
-
-        if (! $settings->notification_enabled) {
-            BudgetAlert::query()->where('user_id', $user->id)->delete();
-
-            return collect();
-        }
-
-        $now = Carbon::now('Asia/Jakarta');
-        $today = $now->copy()->startOfDay();
-        $month = $now->format('Y-m');
-        $monthStart = $now->copy()->startOfMonth();
-        $monthEnd = $now->copy()->endOfMonth();
-        $activeAlerts = collect();
-
-        $dailyBudget = (float) $settings->daily_budget;
-        $todayExpense = $this->expenseSum($user->id, $today, $today->copy()->endOfDay());
-        if ($dailyBudget > 0 && $todayExpense >= $dailyBudget) {
-            $activeAlerts->push($this->definition(
-                user: $user,
-                key: 'daily_budget:'.$today->toDateString(),
-                type: 'daily_budget',
-                title: 'Daily budget habis',
-                message: 'Daily budget kamu sudah mencapai limit.',
-                threshold: $dailyBudget,
-                current: $todayExpense,
-                periodDate: $today,
-            ));
-        }
-
-        $monthlyBudget = (float) $settings->monthly_budget;
-        $monthExpense = $this->expenseSum($user->id, $monthStart, $monthEnd);
-        if ($monthlyBudget > 0 && $monthExpense >= $monthlyBudget) {
-            $activeAlerts->push($this->definition(
-                user: $user,
-                key: 'monthly_budget:'.$month,
-                type: 'monthly_budget',
-                title: 'Monthly budget habis',
-                message: 'Monthly budget kamu sudah mencapai limit.',
-                threshold: $monthlyBudget,
-                current: $monthExpense,
-                periodMonth: $month,
-            ));
-        }
-
-        Category::query()
-            ->where('user_id', $user->id)
-            ->where('type', 'expense')
-            ->where('monthly_budget', '>', 0)
-            ->get()
-            ->each(function (Category $category) use ($activeAlerts, $user, $monthStart, $monthEnd, $month): void {
-                $budget = (float) $category->monthly_budget;
-                $spent = $this->expenseSum($user->id, $monthStart, $monthEnd, $category->id);
-
-                if ($spent < $budget) {
-                    return;
-                }
-
-                $overBudget = max(0, $spent - $budget);
-                $activeAlerts->push($this->definition(
-                    user: $user,
-                    key: "category_budget:{$category->id}:{$month}",
-                    type: 'category_budget',
-                    title: 'Budget kategori habis',
-                    message: $overBudget > 0
-                        ? "Budget kategori {$category->name} sudah melebihi budget sebesar Rp ".number_format($overBudget, 0, ',', '.').'.'
-                        : "Budget kategori {$category->name} sudah mencapai limit.",
-                    threshold: $budget,
-                    current: $spent,
-                    categoryId: $category->id,
-                    periodMonth: $month,
-                ));
-            });
-
+        $activeAlerts = $this->checkBudgetNotifications($user);
         $activeKeys = $activeAlerts->pluck('alert_key')->all();
+
         BudgetAlert::query()
             ->where('user_id', $user->id)
-            ->when($activeKeys !== [], fn ($query) => $query->whereNotIn('alert_key', $activeKeys))
+            ->when(
+                $activeKeys !== [],
+                fn ($query) => $query->whereNotIn('alert_key', $activeKeys),
+            )
             ->delete();
 
         $activeAlerts->each(function (array $alert): void {
@@ -112,6 +44,122 @@ class BudgetAlertService
             ->latest()
             ->get()
             ->map(fn (BudgetAlert $alert) => $this->serialize($alert))
+            ->values();
+    }
+
+    public function checkBudgetNotifications(User $user): Collection
+    {
+        $settings = $this->settingsFor($user);
+
+        if (! $settings->notification_enabled) {
+            BudgetAlert::query()->where('user_id', $user->id)->delete();
+
+            return collect();
+        }
+
+        $now = Carbon::now('Asia/Jakarta');
+
+        return collect()
+            ->merge($this->checkDailyBudget($user, $settings, $now))
+            ->merge($this->checkMonthlyBudget($user, $settings, $now))
+            ->merge($this->checkCategoryBudgets($user, $now));
+    }
+
+    private function checkDailyBudget(User $user, UserSetting $settings, Carbon $now): Collection
+    {
+        $today = $now->copy()->startOfDay();
+        $dailyBudget = (float) $settings->daily_budget;
+
+        if ($dailyBudget <= 0) {
+            return collect();
+        }
+
+        $todayExpense = $this->expenseSum($user->id, $today, $today->copy()->endOfDay());
+
+        if ($todayExpense < $dailyBudget) {
+            return collect();
+        }
+
+        return collect([
+            $this->definition(
+                user: $user,
+                key: 'daily_budget:'.$today->toDateString(),
+                type: 'daily_budget',
+                title: 'Daily budget habis',
+                message: 'Daily budget kamu sudah mencapai limit.',
+                threshold: $dailyBudget,
+                current: $todayExpense,
+                periodDate: $today,
+            ),
+        ]);
+    }
+
+    private function checkMonthlyBudget(User $user, UserSetting $settings, Carbon $now): Collection
+    {
+        $month = $now->format('Y-m');
+        $monthStart = $now->copy()->startOfMonth();
+        $monthEnd = $now->copy()->endOfMonth();
+        $monthlyBudget = (float) $settings->monthly_budget;
+
+        if ($monthlyBudget <= 0) {
+            return collect();
+        }
+
+        $monthExpense = $this->expenseSum($user->id, $monthStart, $monthEnd);
+
+        if ($monthExpense < $monthlyBudget) {
+            return collect();
+        }
+
+        return collect([
+            $this->definition(
+                user: $user,
+                key: 'monthly_budget:'.$month,
+                type: 'monthly_budget',
+                title: 'Monthly budget habis',
+                message: 'Monthly budget kamu sudah mencapai limit.',
+                threshold: $monthlyBudget,
+                current: $monthExpense,
+                periodMonth: $month,
+            ),
+        ]);
+    }
+
+    private function checkCategoryBudgets(User $user, Carbon $now): Collection
+    {
+        $month = $now->format('Y-m');
+        $monthStart = $now->copy()->startOfMonth();
+        $monthEnd = $now->copy()->endOfMonth();
+
+        return Category::query()
+            ->where('user_id', $user->id)
+            ->where('type', 'expense')
+            ->where('monthly_budget', '>', 0)
+            ->get()
+            ->map(function (Category $category) use ($user, $monthStart, $monthEnd, $month): ?array {
+                $budget = (float) $category->monthly_budget;
+                $spent = $this->expenseSum($user->id, $monthStart, $monthEnd, $category->id);
+
+                if ($spent < $budget) {
+                    return null;
+                }
+
+                $overBudget = max(0, $spent - $budget);
+                return $this->definition(
+                    user: $user,
+                    key: "category_budget:{$category->id}:{$month}",
+                    type: 'category_budget',
+                    title: 'Budget kategori habis',
+                    message: $overBudget > 0
+                        ? "Budget kategori {$category->name} sudah melebihi budget sebesar Rp ".number_format($overBudget, 0, ',', '.').'.'
+                        : "Budget kategori {$category->name} sudah mencapai limit.",
+                    threshold: $budget,
+                    current: $spent,
+                    categoryId: $category->id,
+                    periodMonth: $month,
+                );
+            })
+            ->filter()
             ->values();
     }
 
@@ -170,7 +218,7 @@ class BudgetAlertService
         ];
     }
 
-    private function settingsFor(User $user)
+    private function settingsFor(User $user): UserSetting
     {
         return $user->userSetting()->firstOrCreate(
             ['user_id' => $user->id],
