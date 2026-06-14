@@ -49,7 +49,7 @@ class TransactionController extends ApiController
             'amount' => $validated['amount'],
             'description' => $validated['description'] ?? null,
             'date' => substr($validated['transaction_date'], 0, 10),
-            'transaction_date' => $validated['transaction_date'],
+            'transaction_date' => $this->normalizeTransactionDate($validated['transaction_date']),
             'location_lat' => $validated['location_lat'] ?? $request->input('latitude') ?? $request->input('lat'),
             'location_lng' => $validated['location_lng'] ?? $request->input('longitude') ?? $request->input('lng'),
             'location_name' => $validated['location_name'] ?? $request->input('address'),
@@ -89,6 +89,7 @@ class TransactionController extends ApiController
         }
         if (isset($validated['transaction_date'])) {
             $payload['date'] = substr($validated['transaction_date'], 0, 10);
+            $payload['transaction_date'] = $this->normalizeTransactionDate($validated['transaction_date']);
         }
         $payload['location_lat'] = $request->input('location_lat', $request->input('latitude', $request->input('lat', $transaction->location_lat)));
         $payload['location_lng'] = $request->input('location_lng', $request->input('longitude', $request->input('lng', $transaction->location_lng)));
@@ -148,7 +149,7 @@ class TransactionController extends ApiController
             ->sortByDesc('total')
             ->values();
         $dailyTrend = $expenseTransactions
-            ->groupBy(fn (Transaction $transaction) => Carbon::parse($transaction->transaction_date ?? $transaction->date ?? now())->format('Y-m-d'))
+            ->groupBy(fn (Transaction $transaction) => Carbon::parse($transaction->date ?? $transaction->transaction_date ?? now())->format('Y-m-d'))
             ->map(fn ($items, string $date) => [
                 'date' => $date,
                 'label' => Carbon::parse($date)->format('d M'),
@@ -209,27 +210,27 @@ class TransactionController extends ApiController
     {
         if (! empty($filters['month'])) {
             $query->where(function ($dateQuery) use ($filters) {
-                $dateQuery->where('transaction_date', 'like', $filters['month'].'%')
+                $dateQuery->where('date', 'like', $filters['month'].'%')
                     ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('transaction_date')->where('date', 'like', $filters['month'].'%');
+                        $fallback->whereNull('date')->where('transaction_date', 'like', $filters['month'].'%');
                     });
             });
         }
 
         if (! empty($filters['start_date'])) {
             $query->where(function ($dateQuery) use ($filters) {
-                $dateQuery->whereDate('transaction_date', '>=', $filters['start_date'])
+                $dateQuery->whereDate('date', '>=', $filters['start_date'])
                     ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('transaction_date')->whereDate('date', '>=', $filters['start_date']);
+                        $fallback->whereNull('date')->whereDate('transaction_date', '>=', $filters['start_date']);
                     });
             });
         }
 
         if (! empty($filters['end_date'])) {
             $query->where(function ($dateQuery) use ($filters) {
-                $dateQuery->whereDate('transaction_date', '<=', $filters['end_date'])
+                $dateQuery->whereDate('date', '<=', $filters['end_date'])
                     ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('transaction_date')->whereDate('date', '<=', $filters['end_date']);
+                        $fallback->whereNull('date')->whereDate('transaction_date', '<=', $filters['end_date']);
                     });
             });
         }
@@ -299,6 +300,13 @@ class TransactionController extends ApiController
         ];
     }
 
+    private function normalizeTransactionDate(string $value): string
+    {
+        return Carbon::parse(substr($value, 0, 10), 'Asia/Jakarta')
+            ->setTime(12, 0)
+            ->format('Y-m-d H:i:s');
+    }
+
     private function serializeTransaction(Transaction $transaction): array
     {
         return [
@@ -310,7 +318,7 @@ class TransactionController extends ApiController
             'amount' => (float) $transaction->amount,
             'description' => $transaction->description,
             'transaction_date' => optional($transaction->transaction_date)->toISOString() ?? optional($transaction->date)->toDateString(),
-            'date' => optional($transaction->transaction_date)->toDateString() ?? optional($transaction->date)->toDateString(),
+            'date' => optional($transaction->date)->toDateString() ?? optional($transaction->transaction_date)->toDateString(),
             'location_lat' => $transaction->location_lat === null ? null : (float) $transaction->location_lat,
             'location_lng' => $transaction->location_lng === null ? null : (float) $transaction->location_lng,
             'location_name' => $transaction->location_name,

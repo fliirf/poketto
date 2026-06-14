@@ -63,7 +63,7 @@ class DashboardController extends ApiController
                 'amount' => (float) $transaction->amount,
                 'description' => $transaction->description,
                 'transaction_date' => optional($transaction->transaction_date)->toISOString() ?? optional($transaction->date)->toDateString(),
-                'date' => optional($transaction->transaction_date)->toDateString() ?? optional($transaction->date)->toDateString(),
+                'date' => optional($transaction->date)->toDateString() ?? optional($transaction->transaction_date)->toDateString(),
                 'location_lat' => $transaction->location_lat === null ? null : (float) $transaction->location_lat,
                 'location_lng' => $transaction->location_lng === null ? null : (float) $transaction->location_lng,
                 'location_name' => $transaction->location_name,
@@ -104,14 +104,14 @@ class DashboardController extends ApiController
             ->where('type', 'expense')
             ->where(function ($query) use ($start, $end) {
                 $query->where(function ($dated) use ($start, $end) {
-                    $dated->whereNotNull('transaction_date')
-                        ->whereDate('transaction_date', '>=', $start->toDateString())
-                        ->whereDate('transaction_date', '<=', $end->toDateString());
+                    $dated->whereNotNull('date')
+                        ->whereDate('date', '>=', $start->toDateString())
+                        ->whereDate('date', '<=', $end->toDateString());
                 })
                     ->orWhere(function ($fallback) use ($start, $end) {
-                        $fallback->whereNull('transaction_date')
-                            ->whereDate('date', '>=', $start->toDateString())
-                            ->whereDate('date', '<=', $end->toDateString());
+                        $fallback->whereNull('date')
+                            ->whereDate('transaction_date', '>=', $start->toDateString())
+                            ->whereDate('transaction_date', '<=', $end->toDateString());
                     });
             })
             ->sum('amount');
@@ -135,10 +135,10 @@ class DashboardController extends ApiController
                     ->where('type', 'expense')
                     ->where('category_id', $category->id)
                     ->where(function ($query) use ($start, $end) {
-                        $query->whereBetween('transaction_date', [$start, $end])
+                        $query->whereBetween('date', [$start->toDateString(), $end->toDateString()])
                             ->orWhere(function ($fallback) use ($start, $end) {
-                                $fallback->whereNull('transaction_date')
-                                    ->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
+                                $fallback->whereNull('date')
+                                    ->whereBetween('transaction_date', [$start, $end]);
                             });
                     })
                     ->sum('amount');
@@ -175,9 +175,9 @@ class DashboardController extends ApiController
                 ->where('type', 'expense')
                 ->when(! empty($filters['category_id']), fn ($query) => $query->where('category_id', $filters['category_id']))
                 ->where(function ($query) use ($date) {
-                    $query->whereDate('transaction_date', $date)
+                    $query->whereDate('date', $date->toDateString())
                         ->orWhere(function ($fallback) use ($date) {
-                            $fallback->whereNull('transaction_date')->whereDate('date', $date);
+                            $fallback->whereNull('date')->whereDate('transaction_date', $date->toDateString());
                         });
                 })
                 ->sum('amount');
@@ -202,9 +202,9 @@ class DashboardController extends ApiController
             ->where('type', 'expense')
             ->when(! empty($filters['category_id']), fn ($query) => $query->where('category_id', $filters['category_id']))
             ->where(function ($query) use ($start, $end) {
-                $query->whereBetween('transaction_date', [$start, $end])
+                $query->whereBetween('date', [$start->toDateString(), $end->toDateString()])
                     ->orWhere(function ($fallback) use ($start, $end) {
-                        $fallback->whereNull('transaction_date')->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
+                        $fallback->whereNull('date')->whereBetween('transaction_date', [$start, $end]);
                     });
             })
             ->get()
@@ -221,27 +221,27 @@ class DashboardController extends ApiController
     {
         if (! empty($filters['month'])) {
             $query->where(function ($dateQuery) use ($filters) {
-                $dateQuery->where('transaction_date', 'like', $filters['month'].'%')
+                $dateQuery->where('date', 'like', $filters['month'].'%')
                     ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('transaction_date')->where('date', 'like', $filters['month'].'%');
+                        $fallback->whereNull('date')->where('transaction_date', 'like', $filters['month'].'%');
                     });
             });
         }
 
         if (! empty($filters['start_date'])) {
             $query->where(function ($dateQuery) use ($filters) {
-                $dateQuery->whereDate('transaction_date', '>=', $filters['start_date'])
+                $dateQuery->whereDate('date', '>=', $filters['start_date'])
                     ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('transaction_date')->whereDate('date', '>=', $filters['start_date']);
+                        $fallback->whereNull('date')->whereDate('transaction_date', '>=', $filters['start_date']);
                     });
             });
         }
 
         if (! empty($filters['end_date'])) {
             $query->where(function ($dateQuery) use ($filters) {
-                $dateQuery->whereDate('transaction_date', '<=', $filters['end_date'])
+                $dateQuery->whereDate('date', '<=', $filters['end_date'])
                     ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('transaction_date')->whereDate('date', '<=', $filters['end_date']);
+                        $fallback->whereNull('date')->whereDate('transaction_date', '<=', $filters['end_date']);
                     });
             });
         }

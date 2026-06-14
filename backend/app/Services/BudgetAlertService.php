@@ -193,14 +193,14 @@ class BudgetAlertService
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
             ->where(function ($query) use ($start, $end) {
                 $query->where(function ($dated) use ($start, $end) {
-                    $dated->whereNotNull('transaction_date')
-                        ->whereDate('transaction_date', '>=', $start->toDateString())
-                        ->whereDate('transaction_date', '<=', $end->toDateString());
+                    $dated->whereNotNull('date')
+                        ->whereDate('date', '>=', $start->toDateString())
+                        ->whereDate('date', '<=', $end->toDateString());
                 })
                     ->orWhere(function ($fallback) use ($start, $end) {
-                        $fallback->whereNull('transaction_date')
-                            ->whereDate('date', '>=', $start->toDateString())
-                            ->whereDate('date', '<=', $end->toDateString());
+                        $fallback->whereNull('date')
+                            ->whereDate('transaction_date', '>=', $start->toDateString())
+                            ->whereDate('transaction_date', '<=', $end->toDateString());
                     });
             })
             ->sum('amount');

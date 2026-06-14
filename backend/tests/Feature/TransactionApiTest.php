@@ -174,4 +174,39 @@ class TransactionApiTest extends TestCase
             ->assertJsonPath('data.daily_budget_remaining', 25000)
             ->assertJsonPath('data.daily_budget_percentage', 75);
     }
+
+    public function test_dashboard_daily_budget_prefers_transaction_date_column_date_over_shifted_datetime(): void
+    {
+        $user = User::factory()->create();
+        UserSetting::create([
+            'user_id' => $user->id,
+            'daily_budget' => 100000,
+            'monthly_budget' => 500000,
+            'currency' => 'IDR',
+            'budget_warning_threshold' => 80,
+            'notification_enabled' => true,
+            'location_enabled' => true,
+        ]);
+        $category = Category::create([
+            'user_id' => $user->id,
+            'name' => 'Belanja',
+            'type' => 'expense',
+            'monthly_budget' => 500000,
+        ]);
+        Transaction::create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'type' => 'expense',
+            'amount' => 60000,
+            'date' => '2026-06-14',
+            'transaction_date' => '2026-06-13 17:00:00',
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/dashboard/summary')
+            ->assertOk()
+            ->assertJsonPath('data.daily_expense', 60000)
+            ->assertJsonPath('data.daily_budget_remaining', 40000)
+            ->assertJsonPath('data.expense_trend.6.total', 60000);
+    }
 }
