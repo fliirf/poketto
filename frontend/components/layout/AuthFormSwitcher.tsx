@@ -83,7 +83,7 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
 
       <div className="auth-panel-wrapper mt-6" data-direction={direction}>
         <div className={`auth-panel auth-panel-${panelState("login")}`} aria-hidden={activeMode !== "login"} inert={activeMode !== "login" ? true : undefined}>
-          <form onSubmit={submitLogin} className="grid gap-4">
+          <form onSubmit={submitLogin} className="grid gap-4 pt-3">
             {loginError ? <ErrorState message={loginError} /> : null}
             <Field label="Email">
               <AppInput
