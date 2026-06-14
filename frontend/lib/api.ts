@@ -213,7 +213,14 @@ export const api = {
     return request<{ alerts: BudgetNotification[] }>("/budget-alerts");
   },
   async notifications() {
-    return request<{ alerts: BudgetNotification[] }>("/notifications");
+    return request<{ alerts: BudgetNotification[] }>("/notifications").catch((err) => {
+      const message = err instanceof Error ? err.message : "";
+      if (message.toLowerCase().includes("notifications") && message.toLowerCase().includes("route")) {
+        return request<{ alerts: BudgetNotification[] }>("/budget-alerts");
+      }
+
+      throw err;
+    });
   },
   async markNotificationRead(id: number) {
     return request<{ notification: { id: number; is_read: boolean } }>(`/notifications/${id}/read`, {

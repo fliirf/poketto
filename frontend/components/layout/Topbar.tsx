@@ -43,6 +43,8 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
     if (notification.is_read) return;
 
     setNotifications((current) => current.map((item) => item.id === notification.id ? { ...item, is_read: true } : item));
+    if (!notification.id || notification.id <= 0) return;
+
     try {
       await api.markNotificationRead(notification.id);
     } catch {
