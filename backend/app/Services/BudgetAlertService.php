@@ -26,25 +26,22 @@ class BudgetAlertService
             return collect();
         }
 
-        $today = Carbon::today();
-        $month = Carbon::now()->format('Y-m');
-        $monthStart = Carbon::now()->startOfMonth();
-        $monthEnd = Carbon::now()->endOfMonth();
-        $warningPercent = max(1, min(100, (float) ($settings->budget_warning_threshold ?? 100)));
-        $warningRatio = $warningPercent / 100;
+        $now = Carbon::now('Asia/Jakarta');
+        $today = $now->copy()->startOfDay();
+        $month = $now->format('Y-m');
+        $monthStart = $now->copy()->startOfMonth();
+        $monthEnd = $now->copy()->endOfMonth();
         $activeAlerts = collect();
 
         $dailyBudget = (float) $settings->daily_budget;
-        $todayExpense = $this->expenseSum($user->id, $today->copy()->startOfDay(), $today->copy()->endOfDay());
-        if ($dailyBudget > 0 && $todayExpense >= ($dailyBudget * $warningRatio)) {
+        $todayExpense = $this->expenseSum($user->id, $today, $today->copy()->endOfDay());
+        if ($dailyBudget > 0 && $todayExpense >= $dailyBudget) {
             $activeAlerts->push($this->definition(
                 user: $user,
                 key: 'daily_budget:'.$today->toDateString(),
                 type: 'daily_budget',
-                title: $todayExpense >= $dailyBudget ? 'Daily budget habis' : 'Daily budget mendekati batas',
-                message: $todayExpense >= $dailyBudget
-                    ? 'Daily budget kamu sudah mencapai limit.'
-                    : "Daily budget kamu sudah mencapai {$warningPercent}% dari limit.",
+                title: 'Daily budget habis',
+                message: 'Daily budget kamu sudah mencapai limit.',
                 threshold: $dailyBudget,
                 current: $todayExpense,
                 periodDate: $today,
@@ -53,15 +50,13 @@ class BudgetAlertService
 
         $monthlyBudget = (float) $settings->monthly_budget;
         $monthExpense = $this->expenseSum($user->id, $monthStart, $monthEnd);
-        if ($monthlyBudget > 0 && $monthExpense >= ($monthlyBudget * $warningRatio)) {
+        if ($monthlyBudget > 0 && $monthExpense >= $monthlyBudget) {
             $activeAlerts->push($this->definition(
                 user: $user,
                 key: 'monthly_budget:'.$month,
                 type: 'monthly_budget',
-                title: $monthExpense >= $monthlyBudget ? 'Monthly budget habis' : 'Monthly budget mendekati batas',
-                message: $monthExpense >= $monthlyBudget
-                    ? 'Monthly budget kamu sudah mencapai limit.'
-                    : "Monthly budget kamu sudah mencapai {$warningPercent}% dari limit.",
+                title: 'Monthly budget habis',
+                message: 'Monthly budget kamu sudah mencapai limit.',
                 threshold: $monthlyBudget,
                 current: $monthExpense,
                 periodMonth: $month,
@@ -73,22 +68,23 @@ class BudgetAlertService
             ->where('type', 'expense')
             ->where('monthly_budget', '>', 0)
             ->get()
-            ->each(function (Category $category) use ($activeAlerts, $user, $monthStart, $monthEnd, $month, $warningRatio, $warningPercent): void {
+            ->each(function (Category $category) use ($activeAlerts, $user, $monthStart, $monthEnd, $month): void {
                 $budget = (float) $category->monthly_budget;
                 $spent = $this->expenseSum($user->id, $monthStart, $monthEnd, $category->id);
 
-                if ($spent < ($budget * $warningRatio)) {
+                if ($spent < $budget) {
                     return;
                 }
 
+                $overBudget = max(0, $spent - $budget);
                 $activeAlerts->push($this->definition(
                     user: $user,
                     key: "category_budget:{$category->id}:{$month}",
                     type: 'category_budget',
-                    title: $spent >= $budget ? 'Budget kategori habis' : 'Budget kategori mendekati batas',
-                    message: $spent >= $budget
-                        ? "Budget kategori {$category->name} sudah mencapai limit."
-                        : "Budget kategori {$category->name} sudah mencapai {$warningPercent}% dari limit.",
+                    title: 'Budget kategori habis',
+                    message: $overBudget > 0
+                        ? "Budget kategori {$category->name} sudah melebihi budget sebesar Rp ".number_format($overBudget, 0, ',', '.').'.'
+                        : "Budget kategori {$category->name} sudah mencapai limit.",
                     threshold: $budget,
                     current: $spent,
                     categoryId: $category->id,
@@ -196,10 +192,15 @@ class BudgetAlertService
             ->where('type', 'expense')
             ->when($categoryId, fn ($query) => $query->where('category_id', $categoryId))
             ->where(function ($query) use ($start, $end) {
-                $query->whereBetween('transaction_date', [$start, $end])
+                $query->where(function ($dated) use ($start, $end) {
+                    $dated->whereNotNull('transaction_date')
+                        ->whereDate('transaction_date', '>=', $start->toDateString())
+                        ->whereDate('transaction_date', '<=', $end->toDateString());
+                })
                     ->orWhere(function ($fallback) use ($start, $end) {
                         $fallback->whereNull('transaction_date')
-                            ->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
+                            ->whereDate('date', '>=', $start->toDateString())
+                            ->whereDate('date', '<=', $end->toDateString());
                     });
             })
             ->sum('amount');

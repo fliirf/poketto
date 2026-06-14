@@ -41,8 +41,9 @@ class DashboardController extends ApiController
         $expenseTrend = $this->expenseTrend($user->id, $period['start'], $period['end'], $filters);
         $categoryBreakdown = $this->categoryBreakdown($user->id, $period['start'], $period['end'], $filters);
         $categoryBudgets = $this->categoryBudgets($user->id, $budgetPeriod['start'], $budgetPeriod['end'], $filters);
-        $todayExpense = $this->expenseForRange($user->id, Carbon::today()->startOfDay(), Carbon::today()->endOfDay());
-        $monthExpense = $this->expenseForRange($user->id, Carbon::today()->startOfMonth(), Carbon::today()->endOfMonth());
+        $today = Carbon::now('Asia/Jakarta')->startOfDay();
+        $todayExpense = $this->expenseForRange($user->id, $today, $today->copy()->endOfDay());
+        $monthExpense = $this->expenseForRange($user->id, $today->copy()->startOfMonth(), $today->copy()->endOfMonth());
         $dailyBudget = (float) $settings->daily_budget;
         $monthlyBudget = (float) $settings->monthly_budget;
         $recent = $this->applyFilters(
@@ -102,10 +103,15 @@ class DashboardController extends ApiController
             ->where('user_id', $userId)
             ->where('type', 'expense')
             ->where(function ($query) use ($start, $end) {
-                $query->whereBetween('transaction_date', [$start, $end])
+                $query->where(function ($dated) use ($start, $end) {
+                    $dated->whereNotNull('transaction_date')
+                        ->whereDate('transaction_date', '>=', $start->toDateString())
+                        ->whereDate('transaction_date', '<=', $end->toDateString());
+                })
                     ->orWhere(function ($fallback) use ($start, $end) {
                         $fallback->whereNull('transaction_date')
-                            ->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
+                            ->whereDate('date', '>=', $start->toDateString())
+                            ->whereDate('date', '<=', $end->toDateString());
                     });
             })
             ->sum('amount');

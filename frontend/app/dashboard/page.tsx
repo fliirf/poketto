@@ -19,7 +19,6 @@ const importantCurrencies = ["USD", "EUR", "SGD", "JPY"];
 const pieColors = ["#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#64748b", "#3b82f6"];
 type RateDirection = "idr-to-target" | "target-to-idr";
 type PeriodMode = "today" | "week" | "month" | "year" | "custom";
-type TrendMode = "auto" | "daily" | "weekly" | "monthly";
 type ResolvedTrendMode = "daily" | "weekly" | "monthly";
 type TrendPoint = {
   key: string;
@@ -104,8 +103,7 @@ function shortMonthLabel(value: string) {
   return dateFromParam(`${value}-01`).toLocaleDateString("id-ID", { month: "short", year: "2-digit" });
 }
 
-function resolveTrendMode(points: Array<{ date: string }>, mode: TrendMode): ResolvedTrendMode {
-  if (mode !== "auto") return mode;
+function resolveTrendMode(points: Array<{ date: string }>): ResolvedTrendMode {
   if (points.length > 90) return "monthly";
   if (points.length > 31) return "weekly";
   return "daily";
@@ -174,14 +172,12 @@ export default function DashboardPage() {
   const [ratesLoading, setRatesLoading] = useState(true);
   const [settingsCurrency, setSettingsCurrency] = useState("IDR");
   const [rateDirection, setRateDirection] = useState<RateDirection>("idr-to-target");
-  const [trendMode, setTrendMode] = useState<TrendMode>("auto");
 
   function resetFilters() {
     setPeriodMode(defaultPeriodMode);
     setCustomRange({});
     setFilterOptions({});
     setAdvancedOpen(false);
-    setTrendMode("auto");
   }
 
   function loadRates() {
@@ -206,6 +202,7 @@ export default function DashboardPage() {
         setCategories(categoryData.categories);
         setSettingsCurrency(settingsData.user_settings.currency);
         setStoredCurrency(settingsData.user_settings.currency);
+        window.dispatchEvent(new Event("poketto:notifications-refresh"));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Dashboard gagal dimuat."))
       .finally(() => setLoading(false));
@@ -432,8 +429,6 @@ export default function DashboardPage() {
                   points={summary.expense_trend}
                   totalExpense={displayAmount(summary.total_expense)}
                   currency={currency}
-                  mode={trendMode}
-                  onModeChange={setTrendMode}
                   periodLabel={summary.period?.label ?? "Periode terpilih"}
                   displayAmount={displayAmount}
                 />
@@ -527,7 +522,7 @@ export default function DashboardPage() {
                   </AppLinkButton>
                 </div>
                 <div className="max-h-[24rem] overflow-y-auto pr-1">
-                  <TransactionTable transactions={summary.recent_transactions} currency={currency} currencyRate={currencyRate} compact />
+                  <TransactionTable transactions={summary.recent_transactions} currency={currency} currencyRate={currencyRate} compact showActions={false} />
                 </div>
               </AppCard>
 
@@ -747,20 +742,16 @@ function ExpenseTrendChart({
   points,
   totalExpense,
   currency,
-  mode,
-  onModeChange,
   periodLabel,
   displayAmount
 }: {
   points: Array<{ date: string; label?: string; total: number }>;
   totalExpense: number;
   currency: string;
-  mode: TrendMode;
-  onModeChange: (mode: TrendMode) => void;
   periodLabel: string;
   displayAmount: (value: number | string) => number;
 }) {
-  const resolvedMode = resolveTrendMode(points, mode);
+  const resolvedMode = resolveTrendMode(points);
   const trendPoints = aggregateTrend(points, resolvedMode);
   const hasExpense = trendPoints.some((point) => point.total > 0);
   const max = Math.max(...trendPoints.map((point) => Number(point.total || 0)), 1);
@@ -792,23 +783,6 @@ function ExpenseTrendChart({
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="grid w-full grid-cols-2 rounded-2xl bg-slate-100 p-1 text-xs font-black text-slate-500 sm:w-auto sm:grid-cols-4">
-            {[
-              ["auto", "Auto"],
-              ["daily", "Harian"],
-              ["weekly", "Mingguan"],
-              ["monthly", "Bulanan"]
-            ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => onModeChange(value as TrendMode)}
-                className={`rounded-xl px-2 py-2 transition ${mode === value ? "bg-white text-poketto-700 shadow-sm" : "hover:text-slate-800"}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-bold text-slate-400">
             {periodLabel}
           </span>

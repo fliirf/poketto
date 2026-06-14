@@ -60,7 +60,7 @@ class BudgetAlertServiceTest extends TestCase
             'user_id' => $user->id,
             'category_id' => $category->id,
             'type' => 'expense',
-            'amount' => 950,
+            'amount' => 1000,
             'date' => Carbon::today(),
             'transaction_date' => Carbon::now(),
         ]);
@@ -103,7 +103,7 @@ class BudgetAlertServiceTest extends TestCase
             'user_id' => $user->id,
             'category_id' => $category->id,
             'type' => 'expense',
-            'amount' => 400,
+            'amount' => 500,
             'date' => Carbon::today(),
             'transaction_date' => Carbon::now(),
         ]);

@@ -3,14 +3,31 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
+use App\Models\BudgetAlert;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserSetting;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class TransactionApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Carbon::setTestNow(Carbon::parse('2026-06-14 10:00:00', 'Asia/Jakarta'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_cannot_create_transaction_with_another_users_category(): void
     {
@@ -89,5 +106,72 @@ class TransactionApiTest extends TestCase
 
         $response->assertStatus(422);
         $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_creating_expense_triggers_budget_notifications(): void
+    {
+        $user = User::factory()->create();
+        UserSetting::create([
+            'user_id' => $user->id,
+            'daily_budget' => 100000,
+            'monthly_budget' => 100000,
+            'currency' => 'IDR',
+            'budget_warning_threshold' => 80,
+            'notification_enabled' => true,
+            'location_enabled' => true,
+        ]);
+        $category = Category::create([
+            'user_id' => $user->id,
+            'name' => 'Belanja',
+            'type' => 'expense',
+            'monthly_budget' => 100000,
+        ]);
+
+        $this->actingAs($user, 'sanctum')->postJson('/api/transactions', [
+            'type' => 'expense',
+            'category_id' => $category->id,
+            'amount' => 100000,
+            'transaction_date' => Carbon::now('Asia/Jakarta')->toDateString(),
+        ])->assertCreated();
+
+        $this->assertEqualsCanonicalizing(
+            ['daily_budget', 'monthly_budget', 'category_budget'],
+            BudgetAlert::where('user_id', $user->id)->pluck('alert_type')->all(),
+        );
+    }
+
+    public function test_dashboard_daily_budget_uses_today_even_when_dashboard_filter_is_different(): void
+    {
+        $user = User::factory()->create();
+        UserSetting::create([
+            'user_id' => $user->id,
+            'daily_budget' => 100000,
+            'monthly_budget' => 500000,
+            'currency' => 'IDR',
+            'budget_warning_threshold' => 80,
+            'notification_enabled' => true,
+            'location_enabled' => true,
+        ]);
+        $category = Category::create([
+            'user_id' => $user->id,
+            'name' => 'Belanja',
+            'type' => 'expense',
+            'monthly_budget' => 500000,
+        ]);
+        Transaction::create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'type' => 'expense',
+            'amount' => 75000,
+            'date' => Carbon::now('Asia/Jakarta')->toDateString(),
+            'transaction_date' => Carbon::now('Asia/Jakarta'),
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/dashboard/summary?start_date=2026-05-01&end_date=2026-05-31')
+            ->assertOk()
+            ->assertJsonPath('data.daily_expense', 75000)
+            ->assertJsonPath('data.daily_budget_remaining', 25000)
+            ->assertJsonPath('data.daily_budget_percentage', 75);
     }
 }

@@ -15,7 +15,8 @@ export function TransactionTable({
   deletingId,
   currency = "IDR",
   currencyRate = 1,
-  compact = false
+  compact = false,
+  showActions = true
 }: {
   transactions: Transaction[];
   onDelete?: (id: number) => Promise<void> | void;
@@ -23,6 +24,7 @@ export function TransactionTable({
   currency?: string;
   currencyRate?: number;
   compact?: boolean;
+  showActions?: boolean;
 }) {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
@@ -32,10 +34,14 @@ export function TransactionTable({
 
   return (
     <AppTable
-      headers={["Tanggal", "Kategori", "Catatan", "Lokasi", "Nominal", "Aksi"]}
-      columnClasses={compact ? ["w-28", "w-36", "w-52", "w-44", "w-40", "w-24"] : ["w-32", "w-40", "w-64", "w-56", "w-48", "w-44"]}
-      headerClasses={["", "", "", "", "text-right", "text-right"]}
-      minWidthClass={compact ? "min-w-[820px]" : "min-w-[1040px]"}
+      headers={showActions ? ["Tanggal", "Kategori", "Catatan", "Lokasi", "Nominal", "Aksi"] : ["Tanggal", "Kategori", "Catatan", "Lokasi", "Nominal"]}
+      columnClasses={
+        showActions
+          ? compact ? ["w-28", "w-36", "w-52", "w-44", "w-40", "w-24"] : ["w-32", "w-40", "w-64", "w-56", "w-48", "w-44"]
+          : compact ? ["w-28", "w-36", "w-56", "w-48", "w-40"] : ["w-32", "w-40", "w-72", "w-64", "w-48"]
+      }
+      headerClasses={showActions ? ["", "", "", "", "text-right", "text-right"] : ["", "", "", "", "text-right"]}
+      minWidthClass={showActions ? (compact ? "min-w-[820px]" : "min-w-[1040px]") : (compact ? "min-w-[700px]" : "min-w-[880px]")}
     >
       {transactions.map((transaction) => {
         const type = transaction.type ?? transaction.category?.type ?? "expense";
@@ -64,6 +70,7 @@ export function TransactionTable({
             <td className={`px-3 ${compact ? "py-3" : "py-4"} text-right font-black whitespace-nowrap ${type === "income" ? "text-emerald-600" : "text-red-600"}`}>
               {type === "income" ? "+" : "-"} {formatCurrency(Number(transaction.amount || 0) * currencyRate, currency)}
             </td>
+            {showActions ? (
             <td className={`rounded-r-2xl px-3 ${compact ? "py-3" : "py-4"}`}>
               <div className="flex items-center justify-end gap-2">
                 <Link
@@ -110,6 +117,7 @@ export function TransactionTable({
                 ) : null}
               </div>
             </td>
+            ) : null}
           </tr>
         );
       })}

@@ -214,6 +214,7 @@ export function TransactionForm({
         await api.createTransaction(payload);
         toast.success(form.type === "income" ? "Berhasil tambah pemasukan." : "Berhasil tambah pengeluaran.");
       }
+      window.dispatchEvent(new Event("poketto:notifications-refresh"));
       router.push("/dashboard");
       router.refresh();
     } catch (err) {

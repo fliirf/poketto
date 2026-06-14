@@ -19,13 +19,21 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   useEffect(() => {
     if (!user) return;
 
-    setLoading(true);
-    setError("");
-    api
-      .notifications()
-      .then((data) => setNotifications(data.alerts ?? []))
-      .catch((err) => setError(err instanceof Error ? err.message : "Notifikasi gagal dimuat."))
-      .finally(() => setLoading(false));
+    function refreshNotifications() {
+      if (!user) return;
+      setLoading(true);
+      setError("");
+      api
+        .notifications()
+        .then((data) => setNotifications(data.alerts ?? []))
+        .catch((err) => setError(err instanceof Error ? err.message : "Notifikasi gagal dimuat."))
+        .finally(() => setLoading(false));
+    }
+
+    refreshNotifications();
+    window.addEventListener("poketto:notifications-refresh", refreshNotifications);
+
+    return () => window.removeEventListener("poketto:notifications-refresh", refreshNotifications);
   }, [user]);
 
   useEffect(() => {
