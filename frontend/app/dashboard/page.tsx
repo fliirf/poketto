@@ -223,9 +223,11 @@ export default function DashboardPage() {
   const currencyRate = displayCurrency.rate;
   const displayAmount = (value: number | string) => Number(value || 0) * currencyRate;
   const rawDailyBudget = Number(summary?.daily_budget ?? 0);
-  const rawDailySpent = Number(summary?.daily_expense ?? 0);
-  const rawDailyRemaining = summary?.daily_budget_remaining ?? Math.max(0, rawDailyBudget - rawDailySpent);
-  const dailyBudgetUsed = summary?.daily_budget_percentage ?? (rawDailyBudget > 0 ? Math.min(100, (rawDailySpent / rawDailyBudget) * 100) : 0);
+  const todayKey = formatDateParam(new Date());
+  const todayTrendSpent = Number(summary?.expense_trend.find((item) => item.date === todayKey)?.total ?? 0);
+  const rawDailySpent = Math.max(Number(summary?.daily_expense ?? 0), todayTrendSpent);
+  const rawDailyRemaining = Math.max(0, rawDailyBudget - rawDailySpent);
+  const dailyBudgetUsed = rawDailyBudget > 0 ? Math.min(100, (rawDailySpent / rawDailyBudget) * 100) : 0;
   const rawMonthlyBudget = Number(summary?.monthly_budget ?? 0);
   const rawMonthlySpent = Number(summary?.monthly_expense ?? summary?.total_expense ?? 0);
   const rawMonthlyRemaining = summary?.monthly_budget_remaining ?? Math.max(0, rawMonthlyBudget - rawMonthlySpent);
