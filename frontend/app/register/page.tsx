@@ -4,9 +4,9 @@ import { AuthFormSwitcher } from "@/components/layout/AuthFormSwitcher";
 export default function RegisterPage() {
   return (
     <AuthLayout
-      eyebrow="Mulai catat keuangan"
+      eyebrow="Personal finance tracker"
       title="Budget, transaksi, dan saldo dalam satu tempat."
-      description="Buat akun dan mulai catat keuangan."
+      description="Kelola pemasukan, pengeluaran, dan budget harianmu."
     >
       <AuthFormSwitcher initialMode="register" />
     </AuthLayout>

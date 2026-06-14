@@ -78,7 +78,7 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
   }
 
   return (
-    <AppCard className="rounded-[2rem] border-white/80 bg-white/90 p-6 shadow-soft backdrop-blur-md sm:p-8">
+    <AppCard className="rounded-[2rem] border-white/90 bg-white/[0.92] p-6 shadow-[0_22px_58px_rgba(23,32,51,0.10)] backdrop-blur-md sm:p-8">
       <AuthTabs active={activeMode} onChange={changeMode} />
 
       <div className="auth-panel-wrapper mt-6" data-direction={direction}>

@@ -18,7 +18,7 @@ export function AuthTabs({
     <div className="relative grid grid-cols-2 rounded-2xl bg-slate-100/80 p-1 text-sm font-black text-slate-500">
       <span
         aria-hidden="true"
-        className="auth-tab-indicator absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-xl bg-white shadow-sm"
+        className="auth-tab-indicator absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-xl border border-white/90 bg-white shadow-[0_8px_18px_rgba(120,70,20,0.10)]"
         style={{ transform: `translateX(${activeIndex * 100}%)` }}
       />
       {tabs.map((tab) => (

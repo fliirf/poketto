@@ -23,10 +23,10 @@ export function AuthLayout({
           <BrandLogo />
           <div className="mt-8 max-w-[35rem]">
             <p className="text-xs font-black uppercase tracking-normal text-poketto-700">{eyebrow}</p>
-            <h1 className="mt-3 text-[clamp(2.7rem,4vw,3.55rem)] font-black leading-[1.06] text-slate-950">{title}</h1>
+            <h1 className="mt-3 text-[clamp(2.55rem,3.7vw,3.4rem)] font-black leading-[1.06] text-slate-950">{title}</h1>
             <p className="mt-4 max-w-lg text-base font-semibold leading-7 text-slate-500">{description}</p>
           </div>
-          <div className="mt-7 max-w-[35.5rem]">
+          <div className="mt-6 max-w-[35.5rem]">
             <AuthMotionGraphic />
           </div>
         </section>

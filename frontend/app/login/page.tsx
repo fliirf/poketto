@@ -6,7 +6,7 @@ export default function LoginPage() {
     <AuthLayout
       eyebrow="Personal finance tracker"
       title="Kelola uang harian tanpa ribet."
-      description="Masuk ke dashboard keuanganmu."
+      description="Kelola pemasukan, pengeluaran, dan budget harianmu."
     >
       <AuthFormSwitcher initialMode="login" />
     </AuthLayout>
