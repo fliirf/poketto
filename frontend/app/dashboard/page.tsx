@@ -71,8 +71,14 @@ export default function DashboardPage() {
   const currency = displayCurrency.currency;
   const currencyRate = displayCurrency.rate;
   const displayAmount = (value: number | string) => Number(value || 0) * currencyRate;
-  const dailyBudgetUsed = summary?.daily_budget_percentage ?? 0;
-  const monthlyBudgetUsed = summary?.monthly_budget_percentage ?? 0;
+  const rawDailyBudget = Number(summary?.daily_budget ?? 0);
+  const rawDailySpent = Number(summary?.daily_expense ?? 0);
+  const rawDailyRemaining = summary?.daily_budget_remaining ?? Math.max(0, rawDailyBudget - rawDailySpent);
+  const dailyBudgetUsed = summary?.daily_budget_percentage ?? (rawDailyBudget > 0 ? Math.min(100, (rawDailySpent / rawDailyBudget) * 100) : 0);
+  const rawMonthlyBudget = Number(summary?.monthly_budget ?? 0);
+  const rawMonthlySpent = Number(summary?.monthly_expense ?? summary?.total_expense ?? 0);
+  const rawMonthlyRemaining = summary?.monthly_budget_remaining ?? Math.max(0, rawMonthlyBudget - rawMonthlySpent);
+  const monthlyBudgetUsed = summary?.monthly_budget_percentage ?? (rawMonthlyBudget > 0 ? Math.min(100, (rawMonthlySpent / rawMonthlyBudget) * 100) : 0);
   const dailyLimitReached = dailyBudgetUsed >= 100;
   const monthlyLimitReached = monthlyBudgetUsed >= 100;
   const expenseRatio = summary && Number(summary.total_income) > 0
@@ -114,7 +120,7 @@ export default function DashboardPage() {
               <StatCard label="Pengeluaran" value={displayAmount(summary.total_expense)} currency={currency} tone="expense" />
               <StatCard
                 label="Sisa budget bulanan"
-                value={displayAmount(summary.monthly_budget_remaining ?? Math.max(0, Number(summary.monthly_budget) - Number(summary.total_expense)))}
+                value={displayAmount(rawMonthlyRemaining)}
                 currency={currency}
                 tone="warning"
                 helper={`Budget: ${formatCurrency(displayAmount(summary.monthly_budget), currency)}`}
@@ -124,18 +130,18 @@ export default function DashboardPage() {
             <div className="grid gap-5 lg:grid-cols-2">
               <BudgetProgressCard
                 title="Daily budget"
-                spent={displayAmount(summary.daily_expense ?? 0)}
-                budget={displayAmount(summary.daily_budget)}
-                remaining={displayAmount(summary.daily_budget_remaining ?? 0)}
+                spent={displayAmount(rawDailySpent)}
+                budget={displayAmount(rawDailyBudget)}
+                remaining={displayAmount(rawDailyRemaining)}
                 percentage={dailyBudgetUsed}
                 currency={currency}
                 danger={dailyLimitReached}
               />
               <BudgetProgressCard
                 title="Monthly budget"
-                spent={displayAmount(summary.monthly_expense ?? summary.total_expense)}
-                budget={displayAmount(summary.monthly_budget)}
-                remaining={displayAmount(summary.monthly_budget_remaining ?? 0)}
+                spent={displayAmount(rawMonthlySpent)}
+                budget={displayAmount(rawMonthlyBudget)}
+                remaining={displayAmount(rawMonthlyRemaining)}
                 percentage={monthlyBudgetUsed}
                 currency={currency}
                 danger={monthlyLimitReached}
