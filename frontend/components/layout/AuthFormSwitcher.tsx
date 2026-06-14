@@ -83,7 +83,11 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
 
       <div className="auth-panel-wrapper mt-6" data-direction={direction}>
         <div className={`auth-panel auth-panel-${panelState("login")}`} aria-hidden={activeMode !== "login"} inert={activeMode !== "login" ? true : undefined}>
-          <form onSubmit={submitLogin} className="grid gap-4 pt-8">
+          <form onSubmit={submitLogin} className="grid gap-4">
+            <div className="mb-1">
+              <h2 className="text-2xl font-black text-slate-950">Selamat datang kembali</h2>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">Masuk untuk lanjut mengelola keuanganmu.</p>
+            </div>
             {loginError ? <ErrorState message={loginError} /> : null}
             <Field label="Email">
               <AppInput
@@ -105,11 +109,16 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
             <AppButton type="submit" disabled={loginLoading} className="mt-2 min-h-12 w-full">
               {loginLoading ? "Masuk..." : "Masuk"}
             </AppButton>
+            <p className="text-center text-xs font-semibold text-slate-400">Data keuanganmu aman bersama Poketto.</p>
           </form>
         </div>
 
         <div className={`auth-panel auth-panel-${panelState("register")}`} aria-hidden={activeMode !== "register"} inert={activeMode !== "register" ? true : undefined}>
           <form onSubmit={submitRegister} className="grid gap-4">
+            <div className="mb-1">
+              <h2 className="text-2xl font-black text-slate-950">Buat akun Poketto</h2>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">Mulai catat pemasukan dan pengeluaranmu.</p>
+            </div>
             {registerError ? <ErrorState message={registerError} /> : null}
             <Field label="Nama">
               <AppInput
@@ -147,6 +156,7 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
             <AppButton type="submit" disabled={registerLoading} className="mt-2 min-h-12 w-full">
               {registerLoading ? "Mendaftar..." : "Daftar"}
             </AppButton>
+            <p className="text-center text-xs font-semibold text-slate-400">Mulai kelola budget harian dengan lebih rapi.</p>
           </form>
         </div>
       </div>
