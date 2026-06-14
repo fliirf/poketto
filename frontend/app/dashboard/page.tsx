@@ -291,7 +291,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-2">
+            <div className="grid gap-5 xl:grid-cols-2">
               <BudgetProgressCard
                 title="Daily budget"
                 spent={displayAmount(rawDailySpent)}
@@ -331,7 +331,7 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)]">
                 <div className="grid gap-4">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-2xl bg-emerald-50 p-4">
@@ -426,7 +426,7 @@ export default function DashboardPage() {
               </div>
             </AppCard>
 
-            <div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]">
               <AppCard>
                 <ExpenseTrendChart
                   points={summary.expense_trend}
@@ -649,12 +649,12 @@ function DashboardQuickFilter({
 
   return (
     <div className="grid gap-3">
-      <div className="flex flex-col gap-2 rounded-3xl border border-white/80 bg-white/80 p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex flex-col gap-2 rounded-3xl border border-white/80 bg-white/80 p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
         <CompactField label="Periode">
           <AppSelect
             value={periodMode}
             onChange={(event) => onPeriodModeChange(event.target.value as PeriodMode)}
-            className="min-h-10 rounded-xl px-3 text-xs font-bold sm:w-40"
+            className="min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold sm:w-40"
           >
             <option value="today">Hari ini</option>
             <option value="week">Minggu ini</option>
@@ -668,7 +668,7 @@ function DashboardQuickFilter({
           <AppSelect
             value={filterOptions.category_id ?? ""}
             onChange={(event) => onFilterOptionsChange({ ...filterOptions, category_id: event.target.value })}
-            className="min-h-10 rounded-xl px-3 text-xs font-bold sm:w-44"
+            className="min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold sm:w-44"
           >
             <option value="">Semua</option>
             {visibleCategories.map((category) => (
@@ -683,7 +683,7 @@ function DashboardQuickFilter({
           <AppSelect
             value={selectedType}
             onChange={(event) => updateType(event.target.value as Filters["type"])}
-            className="min-h-10 rounded-xl px-3 text-xs font-bold sm:w-36"
+            className="min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold sm:w-36"
           >
             <option value="">Semua</option>
             <option value="income">Pemasukan</option>
@@ -736,7 +736,7 @@ function DashboardQuickFilter({
 
 function CompactField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="grid gap-1 text-xs font-black uppercase tracking-normal text-slate-400 sm:w-auto">
+    <label className="grid w-full min-w-0 gap-1 text-xs font-black uppercase tracking-normal text-slate-400 sm:w-auto">
       <span>{label}</span>
       {children}
     </label>
@@ -792,7 +792,7 @@ function ExpenseTrendChart({
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="grid grid-cols-4 rounded-2xl bg-slate-100 p-1 text-xs font-black text-slate-500">
+          <div className="grid w-full grid-cols-2 rounded-2xl bg-slate-100 p-1 text-xs font-black text-slate-500 sm:w-auto sm:grid-cols-4">
             {[
               ["auto", "Auto"],
               ["daily", "Harian"],

@@ -8,7 +8,7 @@ export function AppCard({
   className?: string;
 }) {
   return (
-    <section className={classNames("rounded-[1.35rem] border border-white/80 bg-white/95 p-5 shadow-soft backdrop-blur", className)}>
+    <section className={classNames("min-w-0 rounded-[1.35rem] border border-white/80 bg-white/95 p-4 shadow-soft backdrop-blur sm:p-5", className)}>
       {children}
     </section>
   );

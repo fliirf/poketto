@@ -53,12 +53,12 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 -mx-4 mb-6 border-b border-white/70 bg-canvas/85 px-4 py-4 backdrop-blur md:mx-0 md:rounded-b-3xl md:border md:border-t-0">
+    <header className="sticky top-0 z-20 -mx-4 mb-6 border-b border-white/70 bg-canvas/85 px-4 py-4 backdrop-blur lg:mx-0 lg:rounded-b-3xl lg:border lg:border-t-0">
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={onMenu}
-          className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 md:hidden"
+          className="grid h-11 w-11 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 lg:hidden"
           aria-label="Buka menu"
         >
           <span className="text-xl font-bold">=</span>

@@ -74,7 +74,7 @@ export default function CategoriesPage() {
   return (
     <AppLayout>
       <PageHeader title="Kategori & Budget" description="Kelola kategori pemasukan, pengeluaran, dan budget bulanan." />
-      <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
         <CategoryForm onSaved={loadCategories} />
         <AppCard>
           {loading ? <LoadingState /> : null}
@@ -86,14 +86,14 @@ export default function CategoriesPage() {
               const limitReached = category.type === "expense" && Number(budgetStatus?.percentage ?? 0) >= 100;
 
               return (
-                <div key={category.id} className={`flex flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between ${limitReached ? "border border-red-200 bg-red-50" : "bg-slate-50"}`}>
-                  <div>
+                <div key={category.id} className={`flex min-w-0 flex-col gap-3 rounded-2xl p-4 sm:flex-row sm:items-center sm:justify-between ${limitReached ? "border border-red-200 bg-red-50" : "bg-slate-50"}`}>
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-black text-slate-900">{category.name}</p>
                       <Badge tone={category.type}>{category.type === "income" ? "Pemasukan" : "Pengeluaran"}</Badge>
                       {limitReached ? <Badge tone="danger">Budget habis</Badge> : null}
                     </div>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 break-words text-sm text-slate-500">
                       Budget: {formatCurrency(Number(category.monthly_budget ?? 0) * currencyRate, currency)}
                       {budgetStatus ? (
                         <span className={limitReached ? "ml-2 font-bold text-red-600" : "ml-2 font-bold text-slate-400"}>
@@ -102,7 +102,7 @@ export default function CategoriesPage() {
                       ) : null}
                     </p>
                   </div>
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
                     <Link
                       href={`/categories/${category.id}/edit`}
                       className="inline-flex h-10 min-w-16 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-extrabold text-slate-600 shadow-sm transition hover:border-poketto-200 hover:bg-poketto-50 hover:text-poketto-700"

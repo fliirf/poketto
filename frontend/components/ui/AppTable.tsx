@@ -12,7 +12,7 @@ export function AppTable({
   minWidthClass?: string;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="max-w-full overflow-x-auto">
       <table className={`w-full ${minWidthClass} table-fixed border-separate border-spacing-y-2 text-left`}>
         {columnClasses.length ? (
           <colgroup>

@@ -80,7 +80,7 @@ export default function SettingsPage() {
       {settings ? (
         <AppCard className="mx-auto max-w-3xl">
           <form onSubmit={submit} className="grid gap-5">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               <Field label="Daily budget">
                 <AppInput
                   type="text"

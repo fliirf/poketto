@@ -22,9 +22,9 @@ export function StatCard({
   };
 
   return (
-    <AppCard className="min-h-36">
+    <AppCard className="min-h-36 min-w-0">
       <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className={classNames("mt-3 text-2xl font-black tracking-normal sm:text-3xl", tones[tone])}>
+      <p className={classNames("mt-3 break-words text-2xl font-black tracking-normal sm:text-3xl", tones[tone])}>
         {typeof value === "number" ? formatCurrency(value, currency) : value}
       </p>
       {helper ? <p className="mt-3 text-sm text-slate-500">{helper}</p> : null}

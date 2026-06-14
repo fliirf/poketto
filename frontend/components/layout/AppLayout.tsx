@@ -23,11 +23,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   if (!token) return null;
 
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[18rem_1fr]">
+    <div className="min-h-dvh overflow-x-hidden lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       <Sidebar open={open} onClose={() => setOpen(false)} />
-      <main className="min-w-0 px-3 pb-8 sm:px-4 md:px-8 md:pb-10">
+      <main className="min-w-0 max-w-full px-3 pb-8 sm:px-4 lg:px-6 lg:pb-10 xl:px-8">
         <Topbar onMenu={() => setOpen(true)} />
-        <div className="mx-auto max-w-7xl animate-page-in">{children}</div>
+        <div className="mx-auto w-full max-w-7xl min-w-0 animate-page-in">{children}</div>
       </main>
     </div>
   );

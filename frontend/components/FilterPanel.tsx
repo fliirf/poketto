@@ -22,7 +22,7 @@ export function FilterPanel({
     : categories;
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.15fr_1fr_auto] xl:items-end">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[1fr_1fr_1fr_1.15fr_1fr_auto] 2xl:items-end">
       <Field label="Mulai">
         <AppInput
           type="date"
@@ -72,7 +72,7 @@ export function FilterPanel({
           <option value="expense">Pengeluaran</option>
         </AppSelect>
       </Field>
-      <div className="flex md:col-span-2 xl:col-span-1">
+      <div className="flex md:col-span-2 xl:col-span-3 2xl:col-span-1">
         <AppButton type="button" variant="secondary" className="w-full xl:min-w-28" onClick={onReset}>
           Reset
         </AppButton>

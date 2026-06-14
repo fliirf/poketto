@@ -296,7 +296,7 @@ function TransactionQuickFilter({
             placeholder="Kategori, catatan, lokasi..."
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            className="min-h-10 rounded-xl px-3 text-xs font-bold xl:w-64"
+            className="min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold xl:w-64"
           />
         </CompactField>
 
@@ -304,7 +304,7 @@ function TransactionQuickFilter({
           <AppSelect
             value={periodMode}
             onChange={(event) => onPeriodModeChange(event.target.value as TransactionPeriodMode)}
-            className="min-h-10 rounded-xl px-3 text-xs font-bold xl:w-40"
+            className="min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold xl:w-40"
           >
             <option value="all">Semua periode</option>
             <option value="today">Hari ini</option>
@@ -319,7 +319,7 @@ function TransactionQuickFilter({
           <AppSelect
             value={filterOptions.category_id ?? ""}
             onChange={(event) => onFilterOptionsChange({ ...filterOptions, category_id: event.target.value })}
-            className="min-h-10 rounded-xl px-3 text-xs font-bold xl:w-44"
+            className="min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold xl:w-44"
           >
             <option value="">Semua</option>
             {visibleCategories.map((category) => (
@@ -334,7 +334,7 @@ function TransactionQuickFilter({
           <AppSelect
             value={selectedType}
             onChange={(event) => updateType(event.target.value as Filters["type"])}
-            className="min-h-10 rounded-xl px-3 text-xs font-bold xl:w-36"
+            className="min-h-10 w-full min-w-0 rounded-xl px-3 text-xs font-bold xl:w-36"
           >
             <option value="">Semua</option>
             <option value="income">Pemasukan</option>
@@ -391,7 +391,7 @@ function TransactionQuickFilter({
 
 function CompactField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="grid gap-1 text-xs font-black uppercase tracking-normal text-slate-400">
+    <label className="grid w-full min-w-0 gap-1 text-xs font-black uppercase tracking-normal text-slate-400 xl:w-auto">
       <span>{label}</span>
       {children}
     </label>

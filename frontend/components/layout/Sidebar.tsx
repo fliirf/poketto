@@ -18,14 +18,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     <>
       <div
         className={classNames(
-          "fixed inset-0 z-30 bg-slate-950/30 transition md:hidden",
+          "fixed inset-0 z-30 bg-slate-950/30 transition lg:hidden",
           open ? "opacity-100" : "pointer-events-none opacity-0"
         )}
         onClick={onClose}
       />
       <aside
         className={classNames(
-          "fixed left-0 top-0 z-40 flex h-dvh w-72 flex-col border-r border-white/70 bg-white/95 p-5 shadow-soft backdrop-blur transition md:sticky md:translate-x-0 md:shadow-none",
+          "fixed left-0 top-0 z-40 flex h-dvh w-64 shrink-0 flex-col border-r border-white/70 bg-white/95 p-5 shadow-soft backdrop-blur transition lg:sticky lg:translate-x-0 lg:shadow-none",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
