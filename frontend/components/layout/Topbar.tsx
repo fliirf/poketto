@@ -61,7 +61,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 -mx-4 mb-6 border-b border-white/70 bg-canvas/85 px-4 py-4 backdrop-blur lg:mx-0 lg:rounded-b-3xl lg:border lg:border-t-0">
+    <header className="sticky top-0 z-20 -mx-4 mb-6 border-b border-white/70 bg-white/55 px-4 py-4 shadow-sm backdrop-blur-md lg:mx-0 lg:rounded-b-3xl lg:border lg:border-t-0">
       <div className="flex items-center justify-between gap-3">
         <button
           type="button"

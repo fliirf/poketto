@@ -25,7 +25,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       />
       <aside
         className={classNames(
-          "fixed left-0 top-0 z-40 flex h-dvh min-h-dvh w-64 shrink-0 flex-col border-r border-white/70 bg-white/95 p-5 shadow-soft backdrop-blur transition lg:sticky lg:self-stretch lg:translate-x-0 lg:shadow-none",
+          "fixed left-0 top-0 z-40 flex h-dvh min-h-dvh w-64 shrink-0 flex-col border-r border-white/70 bg-white/80 p-5 shadow-soft backdrop-blur-md transition lg:sticky lg:self-stretch lg:translate-x-0 lg:shadow-none",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
