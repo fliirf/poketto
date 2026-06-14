@@ -114,46 +114,46 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
         </div>
 
         <div className={`auth-panel auth-panel-${panelState("register")}`} aria-hidden={activeMode !== "register"} inert={activeMode !== "register" ? true : undefined}>
-          <form onSubmit={submitRegister} className="grid gap-4">
-            <div className="mb-1">
+          <form onSubmit={submitRegister} className="grid gap-3">
+            <div>
               <h2 className="text-2xl font-black text-slate-950">Buat akun Poketto</h2>
-              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">Mulai catat pemasukan dan pengeluaranmu.</p>
+              <p className="mt-1 text-sm font-semibold leading-5 text-slate-500">Mulai catat pemasukan dan pengeluaranmu.</p>
             </div>
             {registerError ? <ErrorState message={registerError} /> : null}
-            <Field label="Nama">
+            <Field label="Nama" className="gap-1.5">
               <AppInput
                 value={registerForm.name}
                 onChange={(event) => setRegisterForm({ ...registerForm, name: event.target.value })}
-                className="min-h-12"
+                className="min-h-11"
                 required
               />
             </Field>
-            <Field label="Email">
+            <Field label="Email" className="gap-1.5">
               <AppInput
                 type="email"
                 value={registerForm.email}
                 onChange={(event) => setRegisterForm({ ...registerForm, email: event.target.value })}
-                className="min-h-12"
+                className="min-h-11"
                 required
               />
             </Field>
-            <Field label="Password">
+            <Field label="Password" className="gap-1.5">
               <PasswordInput
                 value={registerForm.password}
                 onChange={(event) => setRegisterForm({ ...registerForm, password: event.target.value })}
-                className="min-h-12"
+                className="min-h-11"
                 required
               />
             </Field>
-            <Field label="Konfirmasi password">
+            <Field label="Konfirmasi password" className="gap-1.5">
               <PasswordInput
                 value={registerForm.password_confirmation}
                 onChange={(event) => setRegisterForm({ ...registerForm, password_confirmation: event.target.value })}
-                className="min-h-12"
+                className="min-h-11"
                 required
               />
             </Field>
-            <AppButton type="submit" disabled={registerLoading} className="mt-2 min-h-12 w-full">
+            <AppButton type="submit" disabled={registerLoading} className="min-h-11 w-full">
               {registerLoading ? "Mendaftar..." : "Daftar"}
             </AppButton>
             <p className="text-center text-xs font-semibold text-slate-400">Mulai kelola budget harian dengan lebih rapi.</p>

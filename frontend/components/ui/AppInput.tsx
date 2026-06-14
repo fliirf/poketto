@@ -1,9 +1,9 @@
 import { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { classNames } from "@/lib/format";
 
-export function Field({ label, children }: { label: string; children: React.ReactNode }) {
+export function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
-    <label className="grid gap-2 text-sm font-semibold text-slate-700">
+    <label className={classNames("grid gap-2 text-sm font-semibold text-slate-700", className)}>
       <span>{label}</span>
       {children}
     </label>
