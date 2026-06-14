@@ -76,8 +76,220 @@ a {
   }
 }
 
+@keyframes pixel-cat-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes pixel-cat-wave {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes pixel-cat-blink {
+  0%,
+  88%,
+  100% {
+    opacity: 0;
+  }
+  90%,
+  94% {
+    opacity: 1;
+  }
+}
+
+@keyframes pixel-coin-pop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.04);
+  }
+}
+
+@keyframes pixel-sparkle {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes pixel-dot {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
 .animate-page-in {
   animation: page-in 180ms ease-out both;
+}
+
+.route-transition-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(255, 248, 240, 0.74);
+  backdrop-filter: blur(10px);
+  transition:
+    opacity 180ms ease,
+    visibility 180ms ease;
+}
+
+.route-transition-loader-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.route-transition-loader-hidden {
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.pixel-loader {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  width: min(22rem, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 2rem;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 1.5rem;
+  box-shadow: 0 22px 60px rgba(120, 70, 20, 0.12);
+}
+
+.pixel-loader-compact {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem;
+  box-shadow: none;
+}
+
+.pixel-loader-card {
+  display: grid;
+  height: 7.5rem;
+  width: 7.5rem;
+  place-items: center;
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 140, 66, 0.24), transparent 3rem),
+    linear-gradient(145deg, rgba(255, 248, 240, 0.98), rgba(255, 238, 223, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 16px 34px rgba(255, 140, 66, 0.16);
+}
+
+.pixel-loader-compact .pixel-loader-card {
+  height: 5.75rem;
+  width: 5.75rem;
+  border-radius: 1.35rem;
+}
+
+.pixel-cat {
+  height: 7rem;
+  width: 7rem;
+  filter: drop-shadow(0 10px 14px rgba(120, 70, 20, 0.12));
+  animation: pixel-cat-bob 2.4s ease-in-out infinite;
+  shape-rendering: crispEdges;
+}
+
+.pixel-loader-compact .pixel-cat {
+  height: 5.25rem;
+  width: 5.25rem;
+}
+
+.pixel-cat-cream {
+  fill: #fff4df;
+  stroke: #9a6336;
+  stroke-width: 3;
+}
+
+.pixel-cat-orange,
+.pixel-cat-paw {
+  fill: #ff8c42;
+}
+
+.pixel-cat-orange-soft,
+.pixel-cat-belly {
+  fill: #ffd7a8;
+}
+
+.pixel-cat-eye,
+.pixel-cat-mouth,
+.pixel-cat-line {
+  fill: #7b4a28;
+}
+
+.pixel-cat-blink {
+  fill: #fff4df;
+  transform-origin: center;
+  animation: pixel-cat-blink 4.2s steps(1, end) infinite;
+}
+
+.pixel-cat-wave {
+  transform-box: fill-box;
+  transform-origin: 50% 92%;
+  animation: pixel-cat-wave 1.15s ease-in-out infinite;
+}
+
+.pixel-coin {
+  fill: #ffc55f;
+  stroke: #ff8c42;
+  stroke-width: 4;
+  animation: pixel-coin-pop 1.9s ease-in-out infinite;
+}
+
+.pixel-coin-line {
+  fill: #9a6336;
+}
+
+.pixel-sparkle {
+  fill: #ffb86c;
+  animation: pixel-sparkle 1.8s ease-in-out infinite;
+}
+
+.pixel-sparkle-two {
+  animation-delay: 0.45s;
+}
+
+.pixel-dot {
+  height: 0.45rem;
+  width: 0.45rem;
+  border-radius: 999px;
+  background: #ff8c42;
+  animation: pixel-dot 900ms ease-in-out infinite;
+}
+
+.pixel-dot-delay-one {
+  animation-delay: 140ms;
+}
+
+.pixel-dot-delay-two {
+  animation-delay: 280ms;
 }
 
 .auth-tab-indicator {
@@ -291,6 +503,12 @@ a {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-page-in,
+  .pixel-cat,
+  .pixel-cat-blink,
+  .pixel-cat-wave,
+  .pixel-coin,
+  .pixel-sparkle,
+  .pixel-dot,
   .auth-blob,
   .auth-float,
   .auth-coin,
@@ -302,6 +520,7 @@ a {
     animation: none;
   }
 
+  .route-transition-loader,
   .auth-tab-indicator,
   .auth-panel {
     transition: none;

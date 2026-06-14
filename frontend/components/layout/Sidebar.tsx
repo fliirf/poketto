@@ -29,7 +29,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       />
       <aside
         className={classNames(
-          "fixed left-0 top-0 z-40 flex h-dvh min-h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-[rgba(255,140,66,0.18)] bg-[#fff8f0] p-5 shadow-[8px_0_24px_rgba(120,70,20,0.06)] backdrop-blur-md transition lg:sticky lg:self-stretch lg:translate-x-0",
+          "fixed left-0 top-0 z-40 flex h-dvh min-h-dvh w-64 shrink-0 flex-col overflow-hidden rounded-r-[2.25rem] border-r border-[rgba(255,140,66,0.18)] bg-[#fff8f0] p-5 shadow-[8px_0_24px_rgba(120,70,20,0.06)] backdrop-blur-md transition lg:sticky lg:self-stretch lg:translate-x-0 lg:rounded-r-[2rem]",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -37,7 +37,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_8%,rgba(255,140,66,0.20),transparent_12rem),radial-gradient(circle_at_80%_86%,rgba(255,184,108,0.20),transparent_14rem),linear-gradient(180deg,#fff8f0_0%,#ffeedf_100%)]"
         />
-        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0.7),rgba(255,140,66,0.26),rgba(255,255,255,0.55))]" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-6 right-0 w-px rounded-full bg-[linear-gradient(180deg,rgba(255,255,255,0.7),rgba(255,140,66,0.26),rgba(255,255,255,0.55))]" />
 
         <div className="relative z-10 flex min-h-0 flex-1 flex-col">
           <Link href="/dashboard" className="mb-7 rounded-[1.4rem] p-1 transition hover:bg-white/35 focus:outline-none focus:ring-4 focus:ring-poketto-100" onClick={onClose}>

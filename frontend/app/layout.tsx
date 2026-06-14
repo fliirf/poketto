@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Baloo_2, Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { RouteTransitionLoader } from "@/components/layout/RouteTransitionLoader";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${baloo.variable} ${jakarta.variable} ${inter.variable}`}>
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>
+          <RouteTransitionLoader />
         </AuthProvider>
       </body>
     </html>

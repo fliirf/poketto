@@ -1,12 +1,14 @@
 import { AppCard } from "@/components/ui/AppCard";
+import { PixelManekinekoLoader } from "@/components/ui/PixelManekinekoLoader";
 
 export function LoadingState({ label = "Memuat data..." }: { label?: string }) {
   return (
-    <AppCard>
-      <div className="flex items-center gap-3 text-sm font-bold text-slate-500">
-        <span className="h-3 w-3 animate-pulse rounded-full bg-poketto-500" />
-        {label}
-      </div>
+    <AppCard className="border-white/80 bg-white/80">
+      <PixelManekinekoLoader
+        compact
+        title={label}
+        subtitle="Menyiapkan catatan keuanganmu..."
+      />
     </AppCard>
   );
 }
