@@ -58,8 +58,190 @@ a {
   animation: page-in 180ms ease-out both;
 }
 
+.auth-motion {
+  isolation: isolate;
+}
+
+.auth-blob {
+  position: absolute;
+  z-index: -1;
+  filter: blur(18px);
+  opacity: 0.72;
+  transform: translate3d(0, 0, 0);
+  animation: auth-drift 9s ease-in-out infinite alternate;
+}
+
+.auth-blob-one {
+  left: -4rem;
+  top: -3rem;
+  height: 15rem;
+  width: 18rem;
+  border-radius: 45% 55% 58% 42%;
+  background: linear-gradient(135deg, rgba(242, 143, 51, 0.36), rgba(255, 221, 171, 0.22));
+}
+
+.auth-blob-two {
+  bottom: -4rem;
+  right: -3rem;
+  height: 16rem;
+  width: 16rem;
+  border-radius: 52% 48% 42% 58%;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(242, 143, 51, 0.24));
+  animation-delay: -2.5s;
+}
+
+.auth-ring {
+  position: absolute;
+  z-index: -1;
+  border: 1px solid rgba(242, 143, 51, 0.18);
+  border-radius: 999px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.24)),
+    repeating-linear-gradient(135deg, rgba(242, 143, 51, 0.08) 0 4px, transparent 4px 12px);
+}
+
+.auth-float {
+  animation: auth-float 5.8s ease-in-out infinite;
+}
+
+.auth-float-delay {
+  animation-delay: -1.8s;
+}
+
+.auth-float-slow {
+  animation-duration: 7.2s;
+  animation-delay: -3s;
+}
+
+.auth-coin {
+  animation: auth-coin 4.8s ease-in-out infinite;
+}
+
+.auth-alert {
+  animation: auth-alert 4.8s ease-in-out infinite;
+}
+
+.auth-progress {
+  width: 76%;
+  transform-origin: left;
+  animation: auth-progress 900ms ease-out both;
+}
+
+.auth-bar {
+  height: var(--bar-height);
+  transform-origin: bottom;
+  animation: auth-bar 760ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--bar-delay);
+}
+
+.auth-line {
+  fill: none;
+  stroke: #f28f33;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 5;
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  animation: auth-line 1.2s ease-out 260ms both;
+}
+
+.auth-pulse-dot {
+  fill: #f28f33;
+  transform-origin: center;
+  animation: auth-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes auth-drift {
+  from {
+    transform: translate3d(-8px, 4px, 0) scale(1);
+  }
+  to {
+    transform: translate3d(12px, -10px, 0) scale(1.06);
+  }
+}
+
+@keyframes auth-coin {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(7deg);
+  }
+}
+
+@keyframes auth-alert {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+@keyframes auth-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes auth-bar {
+  from {
+    transform: scaleY(0.12);
+    opacity: 0.55;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes auth-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes auth-pulse {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-page-in {
+  .animate-page-in,
+  .auth-blob,
+  .auth-float,
+  .auth-coin,
+  .auth-alert,
+  .auth-progress,
+  .auth-bar,
+  .auth-line,
+  .auth-pulse-dot {
     animation: none;
+  }
+
+  .auth-line {
+    stroke-dashoffset: 0;
   }
 }
