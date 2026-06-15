@@ -121,7 +121,7 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
         </div>
 
         <div className={`auth-panel auth-panel-${panelState("register")}`} aria-hidden={activeMode !== "register"} inert={activeMode !== "register" ? true : undefined}>
-          <form onSubmit={submitRegister} className="grid gap-2.5">
+          <form onSubmit={submitRegister} className="grid gap-2">
             <div>
               <h2 className="text-2xl font-black text-slate-950">Buat akun Poketto</h2>
               <p className="mt-1 text-sm font-semibold leading-5 text-slate-500">Mulai catat pemasukan dan pengeluaranmu.</p>

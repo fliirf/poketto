@@ -306,7 +306,7 @@ a {
 }
 
 .auth-panel-wrapper[data-active-mode="register"] {
-  min-height: 34rem;
+  min-height: 31rem;
 }
 
 .auth-panel {
