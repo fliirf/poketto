@@ -72,7 +72,7 @@ export function PasswordStrengthMeter({ password }: { password: string }) {
   const showSparkle = strength.tone === "strong" || strength.tone === "very-strong";
 
   return (
-    <div className="rounded-xl border border-[rgba(255,140,66,0.12)] bg-[#fff8f0]/25 px-2.5 py-1.5">
+    <div className="password-strength-meter rounded-xl border border-[rgba(255,140,66,0.12)] bg-[#fff8f0]/25 px-2.5 py-1.5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className={classNames("relative grid h-5 w-5 shrink-0 place-items-center", tone.icon)}>

@@ -88,7 +88,7 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
     <AppCard className="rounded-[2rem] border-white/90 bg-white/[0.92] p-6 shadow-[0_22px_58px_rgba(23,32,51,0.10)] backdrop-blur-md sm:p-8">
       <AuthTabs active={activeMode} onChange={changeMode} />
 
-      <div className="auth-panel-wrapper mt-6" data-active-mode={activeMode} data-direction={direction}>
+      <div className="auth-panel-wrapper mt-6" data-active-mode={activeMode} data-password-active={registerForm.password ? "true" : "false"} data-direction={direction}>
         <div className={`auth-panel auth-panel-${panelState("login")}`} aria-hidden={activeMode !== "login"} inert={activeMode !== "login" ? true : undefined}>
           <form onSubmit={submitLogin} className="grid gap-4">
             <div className="mb-1">
@@ -121,54 +121,54 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
         </div>
 
         <div className={`auth-panel auth-panel-${panelState("register")}`} aria-hidden={activeMode !== "register"} inert={activeMode !== "register" ? true : undefined}>
-          <form onSubmit={submitRegister} className="grid gap-1.5">
+          <form onSubmit={submitRegister} className="grid gap-3">
             <div>
-              <h2 className="text-[1.35rem] font-black leading-7 text-slate-950">Buat akun Poketto</h2>
-              <p className="mt-0.5 text-xs font-semibold leading-5 text-slate-500">Mulai catat pemasukan dan pengeluaranmu.</p>
+              <h2 className="text-2xl font-black text-slate-950">Buat akun Poketto</h2>
+              <p className="mt-1 text-sm font-semibold leading-5 text-slate-500">Mulai catat pemasukan dan pengeluaranmu.</p>
             </div>
             {registerError ? <ErrorState message={registerError} /> : null}
-            <Field label="Nama" className="gap-1">
+            <Field label="Nama" className="gap-1.5">
               <AppInput
                 value={registerForm.name}
                 onChange={(event) => setRegisterForm({ ...registerForm, name: event.target.value })}
-                className="h-10 min-h-10"
+                className="min-h-11"
                 required
               />
             </Field>
-            <Field label="Email" className="gap-1">
+            <Field label="Email" className="gap-1.5">
               <AppInput
                 type="email"
                 value={registerForm.email}
                 onChange={(event) => setRegisterForm({ ...registerForm, email: event.target.value })}
-                className="h-10 min-h-10"
+                className="min-h-11"
                 required
               />
             </Field>
-            <Field label="Password" className="gap-1">
+            <Field label="Password" className="gap-1.5">
               <PasswordInput
                 value={registerForm.password}
                 onChange={(event) => setRegisterForm({ ...registerForm, password: event.target.value })}
-                className="h-10 min-h-10"
+                className="min-h-11"
                 required
               />
             </Field>
-            <PasswordStrengthMeter password={registerForm.password} />
-            <Field label="Konfirmasi password" className="gap-1">
+            <Field label="Konfirmasi password" className="gap-1.5">
               <PasswordInput
                 value={registerForm.password_confirmation}
                 onChange={(event) => setRegisterForm({ ...registerForm, password_confirmation: event.target.value })}
-                className="h-10 min-h-10"
+                className="min-h-11"
                 required
               />
               {confirmPasswordState !== "empty" ? (
-                <span className={`text-[11px] font-bold ${confirmPasswordState === "match" ? "text-emerald-700" : "text-red-600"}`}>
+                <span className={`text-xs font-bold ${confirmPasswordState === "match" ? "text-emerald-700" : "text-red-600"}`}>
                   {confirmPasswordState === "match" ? "Password cocok." : "Konfirmasi password belum sama."}
                 </span>
               ) : null}
             </Field>
-            <AppButton type="submit" disabled={registerLoading} className="min-h-10 w-full">
+            <AppButton type="submit" disabled={registerLoading} className="min-h-11 w-full">
               {registerLoading ? "Mendaftar..." : "Daftar"}
             </AppButton>
+            {registerForm.password ? <PasswordStrengthMeter password={registerForm.password} /> : null}
             <p className="text-center text-xs font-semibold text-slate-400">Mulai kelola budget harian dengan lebih rapi.</p>
           </form>
         </div>
