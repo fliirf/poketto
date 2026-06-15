@@ -305,8 +305,12 @@ a {
   transition: min-height 180ms ease;
 }
 
+.auth-panel-wrapper[data-active-mode="register"] {
+  min-height: 32rem;
+}
+
 .auth-panel-wrapper[data-active-mode="register"][data-password-active="true"] {
-  min-height: 31rem;
+  min-height: 36rem;
 }
 
 .auth-panel {
