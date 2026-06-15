@@ -82,7 +82,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       />
       <aside
         className={classNames(
-          "fixed left-0 top-0 z-40 flex h-dvh min-h-dvh w-64 shrink-0 flex-col overflow-x-hidden overflow-y-auto rounded-r-[2.25rem] border-r border-[rgba(255,140,66,0.18)] bg-[#fff8f0] p-5 shadow-[8px_0_24px_rgba(120,70,20,0.06)] backdrop-blur-md transition lg:sticky lg:max-h-dvh lg:self-start lg:translate-x-0 lg:rounded-r-[2rem]",
+          "fixed left-0 top-0 z-40 flex h-dvh min-h-dvh w-64 shrink-0 flex-col overflow-x-hidden overflow-y-auto rounded-r-[2.25rem] border-r border-[rgba(255,140,66,0.18)] bg-[#fff8f0] p-5 shadow-[8px_0_24px_rgba(120,70,20,0.06)] backdrop-blur-md transition lg:translate-x-0 lg:rounded-r-[2rem]",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >

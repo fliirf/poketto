@@ -25,11 +25,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   if (!token) return null;
 
   return (
-    <div className="poketto-workspace-bg relative min-h-dvh overflow-x-hidden lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
+    <div className="poketto-workspace-bg relative min-h-dvh overflow-x-hidden">
       <div aria-hidden="true" className="poketto-workspace-overlay pointer-events-none fixed inset-0" />
       <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 h-40 bg-gradient-to-b from-white/80 to-transparent" />
       <Sidebar open={open} onClose={() => setOpen(false)} />
-      <main className="relative z-10 min-w-0 max-w-full px-3 pb-8 sm:px-4 lg:px-6 lg:pb-10 xl:px-8">
+      <main className="relative z-10 min-w-0 max-w-full px-3 pb-8 sm:px-4 lg:pb-10 lg:pl-[17.5rem] lg:pr-6 xl:pr-8">
         <Topbar onMenu={() => setOpen(true)} />
         <div className="mx-auto w-full max-w-7xl min-w-0 animate-page-in">{children}</div>
       </main>
