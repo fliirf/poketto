@@ -34,7 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStoredToken(existing);
     if (!existing) {
       setLoading(false);
-      if (!publicRoutes.has(pathname)) router.replace("/login");
       return;
     }
 
@@ -45,13 +44,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearToken();
         setStoredToken(null);
         setUser(null);
-        if (!publicRoutes.has(pathname)) router.replace("/login");
       })
       .finally(() => setLoading(false));
-  }, [pathname, router]);
+  }, []);
 
   useEffect(() => {
-    if (!loading && token && publicRoutes.has(pathname)) {
+    if (loading) return;
+
+    if (!token && !publicRoutes.has(pathname)) {
+      router.replace("/login");
+      return;
+    }
+
+    if (token && publicRoutes.has(pathname)) {
       router.replace("/dashboard");
     }
   }, [loading, pathname, router, token]);

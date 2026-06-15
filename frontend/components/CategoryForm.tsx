@@ -39,10 +39,14 @@ export function CategoryForm({ category, onSaved }: { category?: Category; onSav
     try {
       if (category) {
         await api.updateCategory(category.id, form);
+        window.dispatchEvent(new Event("poketto:notifications-refresh"));
+        window.dispatchEvent(new Event("poketto:budget-refresh"));
         toast.success("Kategori berhasil diperbarui.");
         router.push("/categories");
       } else {
         await api.createCategory(form);
+        window.dispatchEvent(new Event("poketto:notifications-refresh"));
+        window.dispatchEvent(new Event("poketto:budget-refresh"));
         toast.success("Kategori berhasil ditambahkan.");
         await onSaved?.();
         setForm({ name: "", type: form.type, monthly_budget: 0 });

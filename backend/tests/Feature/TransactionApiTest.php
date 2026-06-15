@@ -108,6 +108,22 @@ class TransactionApiTest extends TestCase
         $this->assertDatabaseCount('transactions', 0);
     }
 
+    public function test_dashboard_filter_rejects_another_users_category(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $otherCategory = Category::create([
+            'user_id' => $otherUser->id,
+            'name' => 'Kategori user lain',
+            'type' => 'expense',
+            'monthly_budget' => 100000,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/dashboard/summary?category_id='.$otherCategory->id)
+            ->assertStatus(422);
+    }
+
     public function test_creating_expense_triggers_budget_notifications(): void
     {
         $user = User::factory()->create();

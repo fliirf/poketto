@@ -61,6 +61,8 @@ export default function CategoriesPage() {
     try {
       await api.deleteCategory(id);
       setCategories((current) => current.filter((category) => category.id !== id));
+      window.dispatchEvent(new Event("poketto:notifications-refresh"));
+      window.dispatchEvent(new Event("poketto:budget-refresh"));
       toast.success("Kategori berhasil dihapus.");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Kategori gagal dihapus.";

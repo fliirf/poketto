@@ -33,7 +33,7 @@ class DashboardController extends ApiController
             ],
         );
 
-        $baseQuery = $this->applyFilters(Transaction::query()->where('user_id', $user->id), $filters);
+        $baseQuery = $this->applyFilters(Transaction::query()->where('user_id', $user->id), $filters, $user->id);
         $totalIncome = (clone $baseQuery)->where('type', 'income')->sum('amount');
         $totalExpense = (clone $baseQuery)->where('type', 'expense')->sum('amount');
         $period = $this->resolvePeriod($filters);
@@ -49,6 +49,7 @@ class DashboardController extends ApiController
         $recent = $this->applyFilters(
             Transaction::with('category')->where('user_id', $user->id),
             $filters,
+            $user->id,
         )
             ->latest('transaction_date')
             ->latest()
@@ -217,7 +218,7 @@ class DashboardController extends ApiController
             ->all();
     }
 
-    private function applyFilters($query, array $filters)
+    private function applyFilters($query, array $filters, int $userId)
     {
         if (! empty($filters['month'])) {
             $query->where(function ($dateQuery) use ($filters) {
@@ -251,6 +252,8 @@ class DashboardController extends ApiController
         }
 
         if (! empty($filters['category_id'])) {
+            $category = Category::where('user_id', $userId)->find($filters['category_id']);
+            abort_if(! $category, 422, 'Kategori tidak valid.');
             $query->where('category_id', $filters['category_id']);
         }
 
