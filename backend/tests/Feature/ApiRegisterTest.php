@@ -17,8 +17,8 @@ class ApiRegisterTest extends TestCase
         $response = $this->postJson('/api/register', [
             'name' => 'Bowo',
             'email' => 'bowo@example.com',
-            'password' => 'secret1',
-            'password_confirmation' => 'secret1',
+            'password' => 'Secret1!',
+            'password_confirmation' => 'Secret1!',
         ]);
 
         $response
@@ -37,5 +37,21 @@ class ApiRegisterTest extends TestCase
         $this->assertSame(6, Category::where('user_id', $user->id)->count());
         $this->assertTrue(UserSetting::where('user_id', $user->id)->exists());
         $this->assertNotEmpty($response->json('data.token'));
+    }
+
+    public function test_register_rejects_password_without_symbol(): void
+    {
+        $response = $this->postJson('/api/register', [
+            'name' => 'Bowo',
+            'email' => 'bowo@example.com',
+            'password' => 'Password1',
+            'password_confirmation' => 'Password1',
+        ]);
+
+        $response
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['password']);
+
+        $this->assertDatabaseMissing('users', ['email' => 'bowo@example.com']);
     }
 }

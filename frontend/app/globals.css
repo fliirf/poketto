@@ -302,6 +302,11 @@ a {
   position: relative;
   min-height: 28rem;
   overflow: hidden;
+  transition: min-height 180ms ease;
+}
+
+.auth-panel-wrapper[data-active-mode="register"] {
+  min-height: 34rem;
 }
 
 .auth-panel {
@@ -424,6 +429,10 @@ a {
   animation: auth-pulse 2.4s ease-in-out infinite;
 }
 
+.password-strength-sparkle {
+  animation: password-sparkle 1.35s ease-in-out infinite;
+}
+
 @keyframes auth-float {
   0%,
   100% {
@@ -501,6 +510,18 @@ a {
   }
 }
 
+@keyframes password-sparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.72);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.28);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-page-in,
   .pixel-cat,
@@ -528,5 +549,9 @@ a {
 
   .auth-line {
     stroke-dashoffset: 0;
+  }
+
+  .password-strength-sparkle {
+    animation: none;
   }
 }

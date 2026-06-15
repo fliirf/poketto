@@ -5,6 +5,7 @@ import { AppButton } from "@/components/ui/AppButton";
 import { AppCard } from "@/components/ui/AppCard";
 import { AppInput, Field } from "@/components/ui/AppInput";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { PasswordStrengthMeter } from "@/components/ui/PasswordStrengthMeter";
 import { ErrorState } from "@/components/ui/States";
 import { AuthTabs, type AuthMode } from "@/components/layout/AuthTabs";
 import { useAuth } from "@/lib/auth";
@@ -77,11 +78,17 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
     }
   }
 
+  const confirmPasswordState = registerForm.password_confirmation
+    ? registerForm.password === registerForm.password_confirmation
+      ? "match"
+      : "mismatch"
+    : "empty";
+
   return (
     <AppCard className="rounded-[2rem] border-white/90 bg-white/[0.92] p-6 shadow-[0_22px_58px_rgba(23,32,51,0.10)] backdrop-blur-md sm:p-8">
       <AuthTabs active={activeMode} onChange={changeMode} />
 
-      <div className="auth-panel-wrapper mt-6" data-direction={direction}>
+      <div className="auth-panel-wrapper mt-6" data-active-mode={activeMode} data-direction={direction}>
         <div className={`auth-panel auth-panel-${panelState("login")}`} aria-hidden={activeMode !== "login"} inert={activeMode !== "login" ? true : undefined}>
           <form onSubmit={submitLogin} className="grid gap-4">
             <div className="mb-1">
@@ -114,7 +121,7 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
         </div>
 
         <div className={`auth-panel auth-panel-${panelState("register")}`} aria-hidden={activeMode !== "register"} inert={activeMode !== "register" ? true : undefined}>
-          <form onSubmit={submitRegister} className="grid gap-3">
+          <form onSubmit={submitRegister} className="grid gap-2.5">
             <div>
               <h2 className="text-2xl font-black text-slate-950">Buat akun Poketto</h2>
               <p className="mt-1 text-sm font-semibold leading-5 text-slate-500">Mulai catat pemasukan dan pengeluaranmu.</p>
@@ -145,6 +152,7 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
                 required
               />
             </Field>
+            <PasswordStrengthMeter password={registerForm.password} />
             <Field label="Konfirmasi password" className="gap-1.5">
               <PasswordInput
                 value={registerForm.password_confirmation}
@@ -152,6 +160,11 @@ export function AuthFormSwitcher({ initialMode }: { initialMode: AuthMode }) {
                 className="min-h-11"
                 required
               />
+              {confirmPasswordState !== "empty" ? (
+                <span className={`text-xs font-bold ${confirmPasswordState === "match" ? "text-emerald-700" : "text-red-600"}`}>
+                  {confirmPasswordState === "match" ? "Password cocok." : "Konfirmasi password belum sama."}
+                </span>
+              ) : null}
             </Field>
             <AppButton type="submit" disabled={registerLoading} className="min-h-11 w-full">
               {registerLoading ? "Mendaftar..." : "Daftar"}

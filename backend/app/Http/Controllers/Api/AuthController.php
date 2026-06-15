@@ -16,7 +16,16 @@ class AuthController extends ApiController
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'regex:/[A-Z]/',
+                'regex:/[a-z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/',
+                'confirmed',
+            ],
         ]);
 
         [$user, $token] = DB::transaction(function () use ($validated) {
