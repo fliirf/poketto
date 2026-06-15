@@ -5,8 +5,8 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       eyebrow="Personal finance tracker"
-      title="Budget, transaksi, dan saldo dalam satu tempat."
-      description="Kelola pemasukan, pengeluaran, dan budget harianmu."
+      title="Kelola uang harianmu."
+      description="Catat transaksi dan pantau budget."
     >
       <AuthFormSwitcher initialMode="register" />
     </AuthLayout>

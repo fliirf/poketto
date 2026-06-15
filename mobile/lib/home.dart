@@ -18,6 +18,8 @@ import 'package:poketto/target_page.dart';
 import 'package:poketto/manage_categories_page.dart';
 import 'package:poketto/ui/app_theme.dart';
 import 'package:poketto/ui/app_widgets.dart';
+import 'package:poketto/ui/poketto_light_components.dart';
+import 'package:poketto/ui/poketto_light_theme.dart';
 
 Map<String, dynamic>? activeTarget;
 Map<String, dynamic>? targetProgress;
@@ -880,24 +882,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentMonth = DateFormat('MMMM').format(DateTime.now());
+    if (_isSelectionMode) {
+      return Scaffold(
+        backgroundColor: PokettoLightColors.backgroundMid,
+        bottomNavigationBar: _buildSelectionBottomBar(),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _buildSelectionList(),
+      );
+    }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      bottomNavigationBar: _isSelectionMode ? _buildSelectionBottomBar() : null,
+    return PokettoGradientScaffold(
+      bottomNavigationBar: LightBottomNav(
+        currentIndex: 0,
+        onTap: (index) {
+          if (index == 0) {
+            hidePopupMenu();
+            return;
+          }
+          if (index == 1) {
+            if (_overlayEntry == null) {
+              showPopupMenu();
+            } else {
+              hidePopupMenu();
+            }
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MonthlyOverviewPage()),
+          );
+        },
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                if (!_isSelectionMode) _buildOrangeHeader(currentMonth),
-                Expanded(
-                  child: _isSelectionMode
-                      ? _buildSelectionList()
-                      : _buildNormalContent(),
-                ),
-                if (!_isSelectionMode) _buildMainBottomNav(),
-              ],
-            ),
+          : _buildNormalContent(),
     );
   }
 
@@ -1010,237 +1029,209 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNormalContent() {
-    return Container(
-      width: double.infinity,
-      color: AppColors.background,
-      child: ClipRRect(
-        borderRadius: BorderRadius.zero,
-        child: RefreshIndicator(
-          onRefresh: _loadData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                if (_loadError != null) _buildErrorCard(_loadError!),
-                if (_alerts.isNotEmpty) _buildAlertCards(),
-                _buildBudgetSection(),
-                Column(
-                  children: [
-                    GestureDetector(
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const TargetPage()),
-                        );
-                        _loadData();
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.shadow.withOpacity(0.08),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: activeTarget == null
-                            ? const Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Target Keuangan',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        'Belum ada target aktif',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Icon(Icons.add_circle_outline,
-                                      size: 32, color: Colors.white),
-                                ],
-                              )
-                            : Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              activeTarget!['name'] ?? 'Target',
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Kategori: ${activeTarget!['category_name'] ?? '-'}',
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.white70,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Target: ${formatCurrency((activeTarget!['target_amount'] as num).toDouble())}',
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.white70,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          '${(targetProgress?['percentage'] ?? 0).toStringAsFixed(0)}%',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: LinearProgressIndicator(
-                                      value:
-                                          (targetProgress?['percentage'] ?? 0) /
-                                              100,
-                                      minHeight: 8,
-                                      backgroundColor:
-                                          Colors.white.withOpacity(0.3),
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Terpakai: ${formatCurrency((targetProgress?['spent'] ?? 0).toDouble())}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.white70,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Sisa: ${formatCurrency((targetProgress?['remaining'] ?? 0).toDouble())}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildFolderList(),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("Bulan Ini",
-                              style: AppTextStyles.sectionTitle),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: transactions.isEmpty
-                      ? const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.receipt_long_outlined,
-                                  size: 64, color: Colors.black26),
-                              SizedBox(height: 16),
-                              Text('Belum ada transaksi',
-                                  style: TextStyle(
-                                      fontSize: 16, color: Colors.black45)),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: transactions.length,
-                          itemBuilder: (context, index) {
-                            final tx = transactions[index];
-                            return GestureDetector(
-                              onLongPress: () =>
-                                  _showTransactionOptions(context, tx),
-                              child: _transaksiItem(
-                                icon: getCategoryIcon(tx['category_name']),
-                                title: tx['category_name'] ?? 'Unknown',
-                                tanggal: _formatDate(tx['date']),
-                                nominal: (tx['category_type'] == 'income')
-                                    ? formatCurrency(
-                                        (tx['amount'] as num).toDouble())
-                                    : "-${formatCurrency((tx['amount'] as num).toDouble())}",
-                                isPositive: tx['category_type'] == 'income',
-                                description: tx['description'] ?? '',
-                                locationLabel: _formatTransactionLocation(tx),
-                              ),
-                            );
-                          },
-                        ),
-                ),
-                const SizedBox(height: 24),
+    final currentMonth =
+        DateFormat('MMMM yyyy', 'id_ID').format(DateTime.now());
+    final recent = transactions.take(5).toList();
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: PokettoLightColors.primary,
+      backgroundColor: Colors.white,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 14),
+              LightHeader(
+                userName: userName,
+                subtitle: currentMonth,
+                onProfileTap: () => _showProfileMenu(context),
+              ),
+              const SizedBox(height: 22),
+              LightBalanceCard(
+                balance: formatCurrency(saldo),
+                income: formatCurrency(pemasukan),
+                expense: '-${formatCurrency(pengeluaran)}',
+              ),
+              const SizedBox(height: 22),
+              _buildLightShortcuts(),
+              const SizedBox(height: 22),
+              if (_loadError != null)
+                _buildLightMessageCard(_loadError!, Icons.error_outline_rounded,
+                    PokettoLightColors.red),
+              if (_alerts.isNotEmpty) ...[
+                ..._alerts.take(2).map((alert) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildLightMessageCard(
+                          alert.message,
+                          Icons.warning_amber_rounded,
+                          PokettoLightColors.primary),
+                    )),
+                const SizedBox(height: 4),
               ],
-            ),
+              _buildLightBudgetSummary(),
+              const SizedBox(height: 22),
+              LightSectionTitle(
+                title: 'Transaksi terbaru',
+                actionLabel: 'Lihat semua',
+                onAction: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const MonthlyOverviewPage()),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              if (recent.isEmpty)
+                _buildLightEmptyTransactions()
+              else
+                ...recent.map((tx) {
+                  final isIncome = tx['category_type'] == 'income';
+                  final description = readString(tx['description']) ?? '';
+                  final subtitle = [
+                    _formatDate(readString(tx['date'])),
+                    if (description.isNotEmpty) description,
+                  ].join(' - ');
+
+                  return LightTransactionItem(
+                    icon: getCategoryIcon(readString(tx['category_name'])),
+                    title: readString(tx['category_name']) ?? 'Unknown',
+                    subtitle: subtitle,
+                    amount: isIncome
+                        ? formatCurrency(readDouble(tx['amount']) ?? 0)
+                        : '-${formatCurrency(readDouble(tx['amount']) ?? 0)}',
+                    isIncome: isIncome,
+                    onLongPress: () => _showTransactionOptions(context, tx),
+                  );
+                }),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLightShortcuts() {
+    return Row(
+      children: [
+        Expanded(
+          child: LightFeatureShortcut(
+            icon: Icons.add_rounded,
+            label: 'Tambah',
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddTransactionPage()),
+              );
+              if (result == true) _loadData();
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: LightFeatureShortcut(
+            icon: Icons.savings_outlined,
+            label: 'Budget',
+            onTap: () async {
+              final updated = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => const BudgetSettingsPage()),
+              );
+              if (updated == true) _loadData();
+            },
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: LightFeatureShortcut(
+            icon: Icons.category_outlined,
+            label: 'Kategori',
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CategoryBudgetsPage()),
+              );
+              _loadData();
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLightBudgetSummary() {
+    final dailyLimit = _dailyBudget ?? 0;
+    final dailyProgress =
+        dailyLimit > 0 ? (pengeluaran / dailyLimit).clamp(0.0, 1.0) : 0.0;
+    final remaining = dailyLimit > 0
+        ? (dailyLimit - pengeluaran).clamp(0, dailyLimit).toDouble()
+        : null;
+
+    return BudgetSummaryCard(
+      spending: formatCurrency(pengeluaran),
+      remaining: remaining == null ? 'Belum diatur' : formatCurrency(remaining),
+      progress: dailyProgress,
+      caption: dailyLimit > 0
+          ? '${(dailyProgress * 100).toStringAsFixed(0)}% dari budget harian'
+          : 'Atur budget harian untuk melihat progress.',
+    );
+  }
+
+  Widget _buildLightMessageCard(String message, IconData icon, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.24)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: PokettoLightColors.text,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLightEmptyTransactions() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(26),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: PokettoLightColors.border),
+      ),
+      child: const Column(
+        children: [
+          Icon(Icons.receipt_long_outlined,
+              color: PokettoLightColors.secondaryText, size: 42),
+          SizedBox(height: 12),
+          Text(
+            'Belum ada transaksi',
+            style: TextStyle(
+                color: PokettoLightColors.secondaryText,
+                fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }

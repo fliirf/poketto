@@ -7,6 +7,7 @@ import 'package:poketto/database/database_helper.dart';
 import 'package:poketto/onboarding_screen.dart';
 import 'package:poketto/providers/user_provider.dart';
 import 'package:poketto/ui/app_theme.dart';
+import 'package:poketto/ui/poketto_light_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Poketto',
-      theme: AppTheme.light,
+      theme: PokettoLightTheme.theme,
       // The app always starts with the LaunchScreen
       home: const LaunchScreen(),
       // Define all the navigation routes
