@@ -534,26 +534,12 @@ class _HomeScreenState extends State<HomeScreen> {
           type: 'expense',
           userId: userId,
         ),
-        AppRepositories.userSettings.getBudgetWarningThreshold(
-          userId: userId,
-        ),
       ]);
       final summary = results[0];
       final txList = results[1] as List<Map<String, dynamic>>;
       final folderList = results[2] as List<Map<String, dynamic>>;
       final expenseCategories = results[3] as List<Map<String, dynamic>>;
-      final warningThreshold = results[4] as double;
-      final fallbackAlerts = AppRepositories.budgetAlerts.buildFallbackAlerts(
-        totalIncome: summary.totalIncome,
-        totalExpense: summary.totalExpense,
-        transactions: txList,
-        dailyBudget: summary.dailyBudget,
-        categories: expenseCategories,
-      );
-      final alerts = AppRepositories.budgetAlerts.mergeAlerts(
-        summary.alerts,
-        fallbackAlerts,
-      );
+      final alerts = summary.alerts;
 
       // FIXED: Added error handling for target loading
       Map<String, dynamic>? target;
@@ -599,13 +585,7 @@ class _HomeScreenState extends State<HomeScreen> {
         isLoading = false;
         _hasLoadedOnce = true;
       });
-      await AppRepositories.notifications.checkBudgetUsage(
-        userId: userId,
-        warningThreshold: warningThreshold,
-        transactions: txList,
-        categories: expenseCategories,
-        dailyLimit: summary.dailyBudget,
-      );
+      await AppRepositories.notifications.showBudgetAlerts(alerts);
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {

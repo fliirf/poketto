@@ -1,5 +1,4 @@
 import 'package:poketto/core/network/api_client.dart';
-import 'package:poketto/core/storage/budget_settings_storage.dart';
 import 'package:poketto/core/storage/token_storage.dart';
 import 'package:poketto/data/repositories/auth_repository.dart';
 import 'package:poketto/data/repositories/budget_alert_repository.dart';
@@ -21,7 +20,6 @@ import 'package:poketto/database/database_helper.dart';
 
 class AppRepositories {
   static final tokenStorage = TokenStorage();
-  static final budgetSettings = BudgetSettingsStorage();
   static final apiClient = ApiClient(tokenStorage: tokenStorage);
   static final databaseHelper = DatabaseHelper.instance;
 
@@ -34,14 +32,11 @@ class AppRepositories {
   static final categories = CategoryRepository(
     categoryService: CategoryService(apiClient),
     tokenStorage: tokenStorage,
-    databaseHelper: databaseHelper,
-    budgetSettingsStorage: budgetSettings,
   );
 
   static final transactions = TransactionRepository(
     transactionService: TransactionService(apiClient),
     tokenStorage: tokenStorage,
-    databaseHelper: databaseHelper,
   );
 
   static final budgetAlerts = BudgetAlertRepository(
@@ -53,9 +48,6 @@ class AppRepositories {
     dashboardService: DashboardService(apiClient),
     budgetAlertRepository: budgetAlerts,
     tokenStorage: tokenStorage,
-    databaseHelper: databaseHelper,
-    budgetSettingsStorage: budgetSettings,
-    categoryRepository: categories,
   );
 
   static final exchangeRates = ExchangeRateRepository(
@@ -66,7 +58,6 @@ class AppRepositories {
   static final userSettings = UserSettingsRepository(
     userSettingsService: UserSettingsService(apiClient),
     tokenStorage: tokenStorage,
-    budgetSettingsStorage: budgetSettings,
   );
 
   static final location = LocationService();

@@ -57,23 +57,9 @@ class AuthRepository {
         ),
         token: response.token,
       );
-    } on ApiException catch (error) {
-      if (!error.canUseLocalFallback) rethrow;
-
-      // TODO: Remove local SQLite auth fallback once backend auth is stable.
-      final localUser = await _databaseHelper.loginUser(email, password);
-      if (localUser == null) {
-        throw const ApiException(
-          message:
-              'API belum tersedia dan akun lokal tidak ditemukan. Silakan daftar akun lokal dulu.',
-        );
-      }
-
+    } on ApiException {
       await _tokenStorage.clearToken();
-      return AuthSession(
-        user: UserModel.fromJson(localUser),
-        usedLocalFallback: true,
-      );
+      rethrow;
     }
   }
 
@@ -105,20 +91,9 @@ class AuthRepository {
         ),
         token: response.token,
       );
-    } on ApiException catch (error) {
-      if (!error.canUseLocalFallback) rethrow;
-
-      // TODO: Remove local SQLite register fallback once backend auth is stable.
-      final userId = await _databaseHelper.createUser(name, email, password);
-      if (userId <= 0) {
-        throw const ApiException(message: 'Email sudah terdaftar.');
-      }
-
+    } on ApiException {
       await _tokenStorage.clearToken();
-      return AuthSession(
-        user: UserModel(id: userId, name: name, email: email),
-        usedLocalFallback: true,
-      );
+      rethrow;
     }
   }
 
@@ -134,15 +109,6 @@ class AuthRepository {
       if (error.statusCode == 401) {
         await _tokenStorage.clearToken();
         return null;
-      }
-
-      final cachedUser = await _tokenStorage.getUserCache();
-      if (cachedUser != null && error.canUseLocalFallback) {
-        final user = UserModel.fromJson(cachedUser);
-        return AuthSession(
-          user: await _localizeCachedUser(user),
-          token: token,
-        );
       }
       return null;
     }

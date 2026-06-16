@@ -374,33 +374,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   Future<void> _checkBudgetNotifications() async {
     try {
-      final userId = Provider.of<UserProvider>(context, listen: false).userId;
-      if (userId == null) return;
-
-      final month = DateFormat('yyyy-MM').format(DateTime.now());
-      final transactions =
-          await AppRepositories.transactions.getTransactionsByMonthForUi(
-        userId: userId,
-        month: month,
-      );
-      final categories = await AppRepositories.categories.getCategoriesForUi(
-        type: 'expense',
-        userId: userId,
-      );
-      final dailyLimit =
-          await AppRepositories.userSettings.getDailyBudget(userId: userId);
-      final threshold =
-          await AppRepositories.userSettings.getBudgetWarningThreshold(
-        userId: userId,
-      );
-
-      await AppRepositories.notifications.checkBudgetUsage(
-        userId: userId,
-        warningThreshold: threshold,
-        transactions: transactions,
-        categories: categories,
-        dailyLimit: dailyLimit,
-      );
+      final alerts = await AppRepositories.budgetAlerts.getRemoteAlerts();
+      await AppRepositories.notifications.showBudgetAlerts(alerts);
     } catch (error) {
       return;
     }

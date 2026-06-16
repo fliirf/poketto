@@ -15,14 +15,13 @@ class ExchangeRateRepository {
 
   Future<List<ExchangeRateModel>> getExchangeRates() async {
     final token = await _tokenStorage.getToken();
-    if (token == null || token.isEmpty) return const [];
-
-    try {
-      return _exchangeRateService.getExchangeRates();
-    } on ApiException catch (error) {
-      if (!error.canUseLocalFallback) rethrow;
-      // TODO: Show exchange-rate UI after backend endpoint is available.
-      return const [];
+    if (token == null || token.isEmpty) {
+      throw const ApiException(
+        message: 'Sesi berakhir. Silakan login ulang.',
+        statusCode: 401,
+      );
     }
+
+    return _exchangeRateService.getExchangeRates();
   }
 }

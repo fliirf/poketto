@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/data/repositories/app_repositories.dart';
 import 'package:poketto/home.dart';
-import 'package:poketto/database/database_helper.dart';
 import 'package:poketto/onboarding_screen.dart';
 import 'package:poketto/providers/user_provider.dart';
 import 'package:poketto/ui/app_theme.dart';
@@ -78,36 +77,9 @@ class _LaunchScreenState extends State<LaunchScreen> {
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('userId');
-
-    if (userId != null) {
-      // Jika ada user ID tersimpan, langsung login dan ke home
-      final db = DatabaseHelper.instance;
-      final user = await db.getUserById(userId);
-      if (user != null && mounted) {
-        // Set data pengguna ke provider
-        Provider.of<UserProvider>(context, listen: false).setUser(
-          user['user_id'] as int,
-          user['name'] as String,
-          user['email'] as String,
-        );
-        // Langsung ke halaman utama
-        Navigator.pushReplacementNamed(context, '/home');
-      } else {
-        // Jika user tidak ditemukan di DB (kasus aneh), fallback ke login
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    } else {
-      // Jika tidak ada user ID, cek untuk onboarding atau login
-      final db = DatabaseHelper.instance;
-      final userCount = await db.getUserCount();
-      if (!mounted) return;
-      if (userCount == 0) {
-        Navigator.pushReplacementNamed(context, '/onboarding');
-      } else {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    }
+    await prefs.remove('userId');
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -179,28 +151,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       final prefs = await SharedPreferences.getInstance();
-      if (session.usedLocalFallback) {
-        await prefs.setInt('userId', session.user.id);
-      } else {
-        await prefs.remove('userId');
-      }
+      await prefs.remove('userId');
 
       Provider.of<UserProvider>(context, listen: false).setUser(
         session.user.id,
         session.user.name,
         session.user.email,
         token: session.token,
-        isRemoteSession: !session.usedLocalFallback,
+        isRemoteSession: true,
       );
-
-      if (session.usedLocalFallback) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Mode lokal aktif karena API belum tersedia.'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
-      }
 
       Navigator.pushReplacementNamed(context, '/home');
     } on ApiException catch (e) {
@@ -440,7 +399,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (!mounted) return;
 
-      if (session.token != null && !session.usedLocalFallback) {
+      if (session.token != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('userId');
 
@@ -579,8 +538,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Password tidak boleh kosong';
                     }
-                    if (value.length < 6) {
-                      return 'Password minimal 6 karakter';
+                    if (value.length < 8) {
+                      return 'Password minimal 8 karakter';
+                    }
+                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                      return 'Password perlu huruf besar';
+                    }
+                    if (!RegExp(r'[a-z]').hasMatch(value)) {
+                      return 'Password perlu huruf kecil';
+                    }
+                    if (!RegExp(r'[0-9]').hasMatch(value)) {
+                      return 'Password perlu angka';
+                    }
+                    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(value)) {
+                      return 'Password perlu simbol';
                     }
                     return null;
                   },
