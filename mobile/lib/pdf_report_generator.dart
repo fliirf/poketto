@@ -3,7 +3,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 class PdfReportGenerator {
@@ -11,9 +10,6 @@ class PdfReportGenerator {
     required DateTime month,
     required List<Map<String, dynamic>> transactions,
   }) async {
-    // Inisialisasi locale dulu
-    await initializeDateFormatting('id_ID', null);
-
     final pdf = pw.Document();
     // Get data
     final stats = _calculateStats(transactions);

@@ -6,7 +6,6 @@ import 'package:poketto/core/helpers/json_helpers.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/data/repositories/app_repositories.dart';
 import 'package:poketto/data/services/location_service.dart';
-import 'package:poketto/database/database_helper.dart';
 import 'package:poketto/providers/user_provider.dart';
 import 'package:poketto/manage_categories_page.dart';
 import 'package:poketto/ui/app_feedback.dart';
@@ -31,7 +30,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   bool isIncome = true;
   int? selectedCategoryId;
-  int? selectedBudgetId;
   DateTime selectedDate = DateTime.now();
   bool isLoading = false;
   bool _attachLocation = true;
@@ -43,7 +41,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   List<Map<String, dynamic>> incomeCategories = [];
   List<Map<String, dynamic>> expenseCategories = [];
-  List<Map<String, dynamic>> activeTargets = [];
 
   bool get isEditMode => widget.transaction != null;
 
@@ -51,7 +48,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void initState() {
     super.initState();
     _loadCategories();
-    _loadActiveTargets();
     if (isEditMode) {
       _initializeEditData();
     }
@@ -80,7 +76,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         DateTime.now();
 
     selectedCategoryId = readInt(transaction['category_id']);
-    selectedBudgetId = readInt(transaction['budget_id']);
 
     final categoryType = readString(
       transaction['category_type'] ?? transaction['type'],
@@ -119,36 +114,16 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
         if (!isEditMode) {
           if (isIncome && incomeCategories.isNotEmpty) {
-            selectedCategoryId = incomeCategories.first['category_id'] as int;
+            selectedCategoryId = readInt(incomeCategories.first['category_id']);
           } else if (!isIncome && expenseCategories.isNotEmpty) {
-            selectedCategoryId = expenseCategories.first['category_id'] as int;
+            selectedCategoryId =
+                readInt(expenseCategories.first['category_id']);
           }
         }
       });
     } catch (e) {
       if (!mounted) return;
       AppFeedback.error(context, 'Kategori belum bisa dimuat. Coba lagi.');
-    }
-  }
-
-  Future<void> _loadActiveTargets() async {
-    try {
-      final userProvider = Provider.of<UserProvider>(context, listen: false);
-      final userId = userProvider.userId;
-
-      if (userId == null) return;
-
-      final db = DatabaseHelper.instance;
-      final targets = await db.getActiveTargets(userId);
-
-      if (!mounted) return;
-
-      setState(() {
-        activeTargets = targets;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      AppFeedback.error(context, 'Target belum bisa dimuat. Coba lagi.');
     }
   }
 
@@ -218,7 +193,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       int result;
 
       if (isEditMode) {
-        final transactionId = widget.transaction!['transaction_id'] as int;
+        final transactionId = readInt(widget.transaction!['transaction_id']);
+        if (transactionId == null) {
+          throw const FormatException('ID transaksi tidak valid');
+        }
         result = await AppRepositories.transactions.updateTransaction(
           transactionId: transactionId,
           categoryId: selectedCategoryId!,
@@ -226,7 +204,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           amount: amount,
           description: description,
           transactionDate: selectedDate,
-          budgetId: selectedBudgetId,
           location: location,
         );
       } else {
@@ -244,7 +221,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           amount: amount,
           description: description,
           transactionDate: selectedDate,
-          budgetId: selectedBudgetId,
           location: location,
         );
       }
@@ -314,7 +290,10 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     setState(() => isLoading = true);
 
     try {
-      final transactionId = widget.transaction!['transaction_id'] as int;
+      final transactionId = readInt(widget.transaction!['transaction_id']);
+      if (transactionId == null) {
+        throw const FormatException('ID transaksi tidak valid');
+      }
 
       final result = await AppRepositories.transactions.deleteTransaction(
         transactionId,
@@ -406,9 +385,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.poketto.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,12 +409,11 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                         });
                       },
                 contentPadding: EdgeInsets.zero,
-                activeColor: AppColors.primary,
                 secondary: Icon(
                   _attachLocation
                       ? Icons.location_on_outlined
                       : Icons.location_off_outlined,
-                  color: AppColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 title: const Text(
                   'Tambahkan lokasi',
@@ -456,15 +434,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 if (_locationName != null && _locationName!.trim().isNotEmpty)
                   Text(
                     _locationName!,
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurface),
                   ),
                 Text(
                   'Lat: ${_locationLat!.toStringAsFixed(6)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style:
+                      TextStyle(fontSize: 12, color: context.poketto.mutedText),
                 ),
                 Text(
                   'Lng: ${_locationLng!.toStringAsFixed(6)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style:
+                      TextStyle(fontSize: 12, color: context.poketto.mutedText),
                 ),
               ],
             ],
@@ -480,7 +462,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       child: Text(
         text,
         style: AppTextStyles.label.copyWith(
-          color: AppColors.text,
+          color: Theme.of(context).colorScheme.onSurface,
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -497,9 +479,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       constraints: BoxConstraints(minHeight: minHeight),
       padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.poketto.border),
       ),
       child: Row(
         crossAxisAlignment: minHeight > 70
@@ -508,7 +490,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         children: [
           Padding(
             padding: EdgeInsets.only(top: minHeight > 70 ? 14 : 0),
-            child: Icon(icon, color: AppColors.primary, size: 21),
+            child: Icon(icon,
+                color: Theme.of(context).colorScheme.primary, size: 21),
           ),
           const SizedBox(width: 10),
           Expanded(child: child),
@@ -532,7 +515,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
             height: 48,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: active ? AppColors.primary : AppColors.surface,
+              color: active
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -541,7 +526,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 Icon(
                   icon,
                   size: 18,
-                  color: active ? Colors.white : AppColors.mutedText,
+                  color: active ? Colors.white : context.poketto.mutedText,
                 ),
                 const SizedBox(width: 7),
                 Text(
@@ -549,7 +534,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: active ? Colors.white : AppColors.mutedText,
+                    color: active ? Colors.white : context.poketto.mutedText,
                   ),
                 ),
               ],
@@ -563,12 +548,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       height: 56,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.poketto.border),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadow.withOpacity(0.04),
+            color: context.poketto.shadow,
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -590,7 +575,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 _locationName = null;
                 if (incomeCategories.isNotEmpty) {
                   selectedCategoryId =
-                      incomeCategories.first['category_id'] as int;
+                      readInt(incomeCategories.first['category_id']);
                 }
               });
             },
@@ -610,7 +595,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                 _locationName = null;
                 if (expenseCategories.isNotEmpty) {
                   selectedCategoryId =
-                      expenseCategories.first['category_id'] as int;
+                      readInt(expenseCategories.first['category_id']);
                 }
               });
             },
@@ -630,7 +615,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         return false;
       },
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
@@ -642,9 +627,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     IconButton(
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.close_rounded),
-                      color: AppColors.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       style: IconButton.styleFrom(
-                        backgroundColor: AppColors.surface,
+                        backgroundColor: Theme.of(context).colorScheme.surface,
                         shape: const CircleBorder(),
                       ),
                     ),
@@ -652,7 +637,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     Expanded(
                       child: Text(
                         isEditMode ? 'Edit Transaksi' : 'Tambah Transaksi',
-                        style: AppTextStyles.title,
+                        style: AppTextStyles.title.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface),
                       ),
                     ),
                     if (isEditMode)
@@ -686,19 +672,19 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             FilteringTextInputFormatter.digitsOnly,
                           ],
                           onChanged: _formatAmount,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 21,
                             fontWeight: FontWeight.w900,
-                            color: AppColors.text,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             isDense: true,
                             hintText: 'Rp 0',
                             hintStyle: TextStyle(
-                              color: Colors.black26,
+                              color: context.poketto.mutedText,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -712,13 +698,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                             child: _fieldShell(
                               icon: Icons.category_outlined,
                               child: currentCategories.isEmpty
-                                  ? const Padding(
+                                  ? Padding(
                                       padding:
                                           EdgeInsets.symmetric(vertical: 17),
                                       child: Text(
                                         'Belum ada kategori...',
                                         style: TextStyle(
-                                          color: AppColors.mutedText,
+                                          color: context.poketto.mutedText,
                                         ),
                                       ),
                                     )
@@ -726,9 +712,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                                       child: DropdownButtonFormField<int>(
                                         value: selectedCategoryId,
                                         isExpanded: true,
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.keyboard_arrow_down_rounded,
-                                          color: AppColors.mutedText,
+                                          color: context.poketto.mutedText,
                                         ),
                                         decoration: const InputDecoration(
                                           border: InputBorder.none,
@@ -740,8 +726,9 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                                         items:
                                             currentCategories.map((category) {
                                           return DropdownMenuItem<int>(
-                                            value:
-                                                category['category_id'] as int,
+                                            value: readInt(
+                                                    category['category_id']) ??
+                                                0,
                                             child: Text(
                                               category['name'] as String,
                                               overflow: TextOverflow.ellipsis,
@@ -775,7 +762,8 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                               icon: const Icon(Icons.tune_rounded),
                               color: Colors.white,
                               style: IconButton.styleFrom(
-                                backgroundColor: AppColors.primary,
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
@@ -784,86 +772,85 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           ),
                         ],
                       ),
-                      if (!isIncome && activeTargets.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        _formLabel('Target (Opsional)'),
-                        _fieldShell(
-                          icon: Icons.flag_outlined,
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButtonFormField<int?>(
-                              value: selectedBudgetId,
-                              isExpanded: true,
-                              icon: const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: AppColors.mutedText,
-                              ),
-                              decoration: const InputDecoration(
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                isDense: true,
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                              hint: const Text('Tidak ada target'),
-                              items: [
-                                const DropdownMenuItem<int?>(
-                                  value: null,
-                                  child: Text('Tidak ada target'),
-                                ),
-                                ...activeTargets.map(
-                                  (target) => DropdownMenuItem<int?>(
-                                    value: target['budget_id'] as int,
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _formLabel('Tanggal'),
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(18),
+                                  onTap: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      firstDate: DateTime(2000),
+                                      lastDate: DateTime(2100),
+                                      initialDate: selectedDate,
+                                    );
+                                    if (picked != null) {
+                                      setState(() => selectedDate = DateTime(
+                                            picked.year,
+                                            picked.month,
+                                            picked.day,
+                                            selectedDate.hour,
+                                            selectedDate.minute,
+                                          ));
+                                    }
+                                  },
+                                  child: _fieldShell(
+                                    icon: Icons.calendar_today_outlined,
                                     child: Text(
-                                      target['name'] as String,
+                                      DateFormat('d MMM yyyy')
+                                          .format(selectedDate),
+                                      maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700),
                                     ),
                                   ),
                                 ),
                               ],
-                              onChanged: (value) {
-                                setState(() => selectedBudgetId = value);
-                              },
                             ),
                           ),
-                        ),
-                      ],
-                      const SizedBox(height: 14),
-                      _formLabel('Tanggal'),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(18),
-                        onTap: () async {
-                          DateTime? picked = await showDatePicker(
-                            context: context,
-                            firstDate: DateTime(2000),
-                            lastDate: DateTime(2100),
-                            initialDate: selectedDate,
-                          );
-                          if (picked != null) {
-                            setState(() => selectedDate = picked);
-                          }
-                        },
-                        child: _fieldShell(
-                          icon: Icons.calendar_today_outlined,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  DateFormat('d MMMM yyyy')
-                                      .format(selectedDate),
-                                  style: const TextStyle(
-                                    color: AppColors.text,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _formLabel('Waktu'),
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(18),
+                                  onTap: () async {
+                                    final picked = await showTimePicker(
+                                      context: context,
+                                      initialTime:
+                                          TimeOfDay.fromDateTime(selectedDate),
+                                    );
+                                    if (picked != null) {
+                                      setState(() => selectedDate = DateTime(
+                                            selectedDate.year,
+                                            selectedDate.month,
+                                            selectedDate.day,
+                                            picked.hour,
+                                            picked.minute,
+                                          ));
+                                    }
+                                  },
+                                  child: _fieldShell(
+                                    icon: Icons.schedule_rounded,
+                                    child: Text(
+                                      DateFormat('HH:mm').format(selectedDate),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700),
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const Icon(
-                                Icons.keyboard_arrow_down_rounded,
-                                color: AppColors.mutedText,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 14),
                       _formLabel('Deskripsi / Catatan'),
@@ -876,12 +863,13 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                           maxLines: 4,
                           minLines: 3,
                           textInputAction: TextInputAction.newline,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
                             hintText: 'Contoh: Makan siang',
-                            hintStyle: TextStyle(color: Colors.black26),
+                            hintStyle:
+                                TextStyle(color: context.poketto.mutedText),
                           ),
                         ),
                       ),
@@ -898,6 +886,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
                     isLoading: isLoading,
                     icon: Icons.save_outlined,
                     label: isEditMode ? 'Update Transaksi' : 'Simpan Transaksi',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: AppButton(
+                    outlined: true,
+                    onPressed:
+                        isLoading ? null : () => Navigator.pop(context, false),
+                    label: 'Batal',
                   ),
                 ),
               ],

@@ -14,4 +14,8 @@ class BudgetAlertService {
         .map((item) => BudgetAlertModel.fromJson(asStringDynamicMap(item)))
         .toList();
   }
+
+  Future<void> markAsRead(int id) async {
+    await _apiClient.patch('/notifications/$id/read', body: {});
+  }
 }

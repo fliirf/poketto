@@ -13,7 +13,9 @@ class ExchangeRateRepository {
   })  : _exchangeRateService = exchangeRateService,
         _tokenStorage = tokenStorage;
 
-  Future<List<ExchangeRateModel>> getExchangeRates() async {
+  Future<List<ExchangeRateModel>> getExchangeRates({
+    String base = 'IDR',
+  }) async {
     final token = await _tokenStorage.getToken();
     if (token == null || token.isEmpty) {
       throw const ApiException(
@@ -22,6 +24,6 @@ class ExchangeRateRepository {
       );
     }
 
-    return _exchangeRateService.getExchangeRates();
+    return _exchangeRateService.getExchangeRates(base: base);
   }
 }

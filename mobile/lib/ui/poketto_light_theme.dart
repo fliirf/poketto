@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:poketto/ui/app_theme.dart';
 
 class PokettoLightColors {
   static const primary = Color(0xFFFF8C42);
@@ -20,101 +21,55 @@ class PokettoLightColors {
 class PokettoLightTheme {
   static const fontFamily = 'Plus Jakarta Sans';
 
-  static ThemeData get theme {
-    final base = ThemeData.light(useMaterial3: true);
-    return base.copyWith(
-      scaffoldBackgroundColor: PokettoLightColors.backgroundMid,
-      primaryColor: PokettoLightColors.primary,
-      textTheme: base.textTheme.apply(
-        fontFamily: fontFamily,
-        bodyColor: PokettoLightColors.text,
-        displayColor: PokettoLightColors.text,
-      ),
-      colorScheme: const ColorScheme.light(
-        primary: PokettoLightColors.primary,
-        secondary: PokettoLightColors.primary,
-        surface: PokettoLightColors.surface,
-        background: PokettoLightColors.backgroundMid,
-        onPrimary: Colors.white,
-        onSurface: PokettoLightColors.text,
-      ),
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        foregroundColor: PokettoLightColors.text,
-      ),
-      cardTheme: CardThemeData(
-        color: PokettoLightColors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        hintStyle: const TextStyle(color: PokettoLightColors.secondaryText),
-        labelStyle: const TextStyle(color: PokettoLightColors.secondaryText),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: PokettoLightColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: PokettoLightColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide:
-              const BorderSide(color: PokettoLightColors.primary, width: 1.4),
-        ),
-      ),
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: PokettoLightColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-        ),
-      ),
-    );
-  }
+  static ThemeData get theme => AppTheme.light;
 }
 
 class PokettoGradientScaffold extends StatelessWidget {
   final Widget body;
   final Widget? bottomNavigationBar;
+  final PreferredSizeWidget? appBar;
   final bool resizeToAvoidBottomInset;
 
   const PokettoGradientScaffold({
     super.key,
     required this.body,
     this.bottomNavigationBar,
+    this.appBar,
     this.resizeToAvoidBottomInset = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-      backgroundColor: PokettoLightColors.backgroundMid,
-      bottomNavigationBar: bottomNavigationBar,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              PokettoLightColors.backgroundStart,
-              PokettoLightColors.backgroundMid,
-              PokettoLightColors.backgroundEnd,
-            ],
-          ),
-        ),
-        child: body,
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF161311),
+                  Color(0xFF0F0F0F),
+                ],
+              )
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFFFFF9F5),
+                  Color(0xFFFFF1E7),
+                  Color(0xFFFFE6D5),
+                ],
+              ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: appBar,
+        resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+        bottomNavigationBar: bottomNavigationBar,
+        body: body,
       ),
     );
   }

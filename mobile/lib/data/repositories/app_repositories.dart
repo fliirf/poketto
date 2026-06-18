@@ -16,17 +16,13 @@ import 'package:poketto/data/services/location_service.dart';
 import 'package:poketto/data/services/notification_service.dart';
 import 'package:poketto/data/services/transaction_service.dart';
 import 'package:poketto/data/services/user_settings_service.dart';
-import 'package:poketto/database/database_helper.dart';
 
 class AppRepositories {
   static final tokenStorage = TokenStorage();
   static final apiClient = ApiClient(tokenStorage: tokenStorage);
-  static final databaseHelper = DatabaseHelper.instance;
-
   static final auth = AuthRepository(
     authService: AuthService(apiClient),
     tokenStorage: tokenStorage,
-    databaseHelper: databaseHelper,
   );
 
   static final categories = CategoryRepository(

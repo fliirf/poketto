@@ -1,63 +1,107 @@
 import 'package:flutter/material.dart';
-import 'package:poketto/ui/poketto_light_theme.dart';
+import 'package:poketto/ui/app_theme.dart';
+import 'package:poketto/ui/app_widgets.dart';
 
 class LightHeader extends StatelessWidget {
   final String userName;
   final String subtitle;
   final VoidCallback onProfileTap;
+  final VoidCallback onNotificationsTap;
+  final int unreadNotificationsCount;
 
   const LightHeader({
     super.key,
     required this.userName,
     required this.subtitle,
     required this.onProfileTap,
+    required this.onNotificationsTap,
+    this.unreadNotificationsCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Halo, $userName',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: PokettoLightColors.text,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: PokettoLightColors.secondaryText,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              Text('Halo, $userName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 3),
+              Text(subtitle,
+                  style: TextStyle(
+                      color: context.poketto.mutedText,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
             ],
           ),
         ),
-        GestureDetector(
-          onTap: onProfileTap,
-          child: Container(
-            height: 48,
-            width: 48,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: PokettoLightColors.border),
-              boxShadow: _softShadow(0.10),
-            ),
-            child: const Icon(
-              Icons.person_outline_rounded,
-              color: PokettoLightColors.primary,
-            ),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface.withOpacity(.8),
+            borderRadius: BorderRadius.circular(PokettoRadius.medium),
+            border: Border.all(color: context.poketto.border),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    tooltip: 'Notifikasi',
+                    onPressed: onNotificationsTap,
+                    icon: const Icon(Icons.notifications_outlined),
+                    color: theme.colorScheme.primary,
+                    constraints:
+                        const BoxConstraints.tightFor(width: 44, height: 44),
+                  ),
+                  if (unreadNotificationsCount > 0)
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 2),
+                        constraints:
+                            const BoxConstraints(minWidth: 17, minHeight: 17),
+                        decoration: BoxDecoration(
+                          color: context.poketto.expense,
+                          borderRadius: BorderRadius.circular(99),
+                          border: Border.all(
+                              color: theme.colorScheme.surface, width: 1.5),
+                        ),
+                        child: Text(
+                          unreadNotificationsCount > 9
+                              ? '9+'
+                              : '$unreadNotificationsCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8.5,
+                            height: 1,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Container(width: 1, height: 24, color: context.poketto.border),
+              IconButton(
+                tooltip: 'Profil',
+                onPressed: onProfileTap,
+                icon: const Icon(Icons.person_outline_rounded),
+                color: theme.colorScheme.primary,
+                constraints:
+                    const BoxConstraints.tightFor(width: 44, height: 44),
+              ),
+            ],
           ),
         ),
       ],
@@ -69,178 +113,114 @@ class LightBalanceCard extends StatelessWidget {
   final String balance;
   final String income;
   final String expense;
+  final VoidCallback? onAddPressed;
 
   const LightBalanceCard({
     super.key,
     required this.balance,
     required this.income,
     required this.expense,
+    this.onAddPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(PokettoSpacing.xl),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            PokettoLightColors.balanceStart,
-            PokettoLightColors.balanceMid,
-            PokettoLightColors.balanceEnd,
-          ],
+          colors: [Color(0xFFFF8B38), Color(0xFFFF6B00), Color(0xFF8A3100)],
         ),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: PokettoLightColors.primary.withOpacity(0.24),
-            blurRadius: 32,
-            offset: const Offset(0, 18),
-          ),
+            color: Theme.of(context).colorScheme.primary.withOpacity(.25),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          )
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              Container(
-                height: 42,
-                width: 42,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  color: Colors.white,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.16),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'Total saldo',
+              Icon(Icons.account_balance_wallet_rounded, color: Colors.white),
+              Spacer(),
+              Text('Saldo utama',
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
+                      color: Colors.white70, fontWeight: FontWeight.w700)),
             ],
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Saldo saat ini',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 22),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(
-              balance,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 34,
-                fontWeight: FontWeight.w900,
+            child: Text(balance,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w900)),
+          ),
+          const SizedBox(height: 6),
+          const Text('Total pemasukan dikurangi pengeluaran',
+              style: TextStyle(color: Colors.white70, fontSize: 12)),
+          const SizedBox(height: PokettoSpacing.lg),
+          Row(children: [
+            Expanded(child: _BalanceMetric(label: 'Pemasukan', value: income)),
+            const SizedBox(width: 10),
+            Expanded(
+                child: _BalanceMetric(label: 'Pengeluaran', value: expense)),
+          ]),
+          if (onAddPressed != null) ...[
+            const SizedBox(height: PokettoSpacing.md),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onAddPressed,
+                icon: const Icon(Icons.add_rounded, size: 19),
+                label: const Text('Tambah transaksi'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF9A3900),
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(PokettoRadius.medium),
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _LightBalanceMetric(
-                  label: 'Pemasukan',
-                  value: income,
-                  icon: Icons.south_west_rounded,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _LightBalanceMetric(
-                  label: 'Pengeluaran',
-                  value: expense,
-                  icon: Icons.north_east_rounded,
-                ),
-              ),
-            ],
-          ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _LightBalanceMetric extends StatelessWidget {
+class _BalanceMetric extends StatelessWidget {
   final String label;
   final String value;
-  final IconData icon;
-
-  const _LightBalanceMetric({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
+  const _BalanceMetric({required this.label, required this.value});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.white70, size: 14),
-              const SizedBox(width: 5),
-              Expanded(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(.14),
+            borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11)),
+          const SizedBox(height: 5),
           FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              fit: BoxFit.scaleDown,
+              child: Text(value,
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w900))),
+        ]),
+      );
 }
 
 class LightFeatureShortcut extends StatelessWidget {
@@ -257,44 +237,29 @@ class LightFeatureShortcut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: PokettoLightColors.border),
-            boxShadow: _softShadow(0.08),
+    final theme = Theme.of(context);
+    return AppCard(
+      padding: EdgeInsets.zero,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        child: Column(children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: context.poketto.softSurface,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary),
           ),
-          child: Column(
-            children: [
-              Container(
-                height: 42,
-                width: 42,
-                decoration: BoxDecoration(
-                  color: PokettoLightColors.primary.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: PokettoLightColors.primary, size: 22),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: PokettoLightColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
+          const SizedBox(height: 8),
+          Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+        ]),
       ),
     );
   }
@@ -321,80 +286,15 @@ class LightTransactionItem extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final amountColor =
-        isIncome ? PokettoLightColors.green : PokettoLightColors.red;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
+  Widget build(BuildContext context) => TransactionListItem(
+        icon: icon,
+        title: title,
+        subtitle: subtitle,
+        amount: amount,
+        isIncome: isIncome,
         onTap: onTap,
         onLongPress: onLongPress,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: PokettoLightColors.border),
-            boxShadow: _softShadow(0.06),
-          ),
-          child: Row(
-            children: [
-              Container(
-                height: 46,
-                width: 46,
-                decoration: BoxDecoration(
-                  color: PokettoLightColors.surfaceWarm,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: PokettoLightColors.primary, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: PokettoLightColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: PokettoLightColors.secondaryText,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                amount,
-                style: TextStyle(
-                  color: amountColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+      );
 }
 
 class BudgetSummaryCard extends StatelessWidget {
@@ -413,206 +313,72 @@ class BudgetSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: PokettoLightColors.border),
-        boxShadow: _softShadow(0.08),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _LightSectionTitle(title: 'Ringkasan budget'),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _BudgetMetric(label: 'Pengeluaran', value: spending),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _BudgetMetric(label: 'Sisa harian', value: remaining),
-              ),
-            ],
+    final semantic = context.poketto;
+    final value = progress.clamp(0.0, 1.0);
+    final progressColor = progress >= 1
+        ? semantic.expense
+        : Theme.of(context).colorScheme.primary;
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Ringkasan budget',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 14),
+        Row(children: [
+          Expanded(child: _Metric(label: 'Pengeluaran', value: spending)),
+          const SizedBox(width: 10),
+          Expanded(child: _Metric(label: 'Sisa harian', value: remaining)),
+        ]),
+        const SizedBox(height: 16),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(99),
+          child: LinearProgressIndicator(
+            minHeight: 9,
+            value: value,
+            color: progressColor,
+            backgroundColor: semantic.softSurface,
           ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 8,
-              value: progress.clamp(0.0, 1.0),
-              backgroundColor: PokettoLightColors.surfaceWarm,
-              color: PokettoLightColors.primary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            caption,
-            style: const TextStyle(
-              color: PokettoLightColors.secondaryText,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 9),
+        Text(caption,
+            style: TextStyle(color: semantic.mutedText, fontSize: 12)),
+      ]),
     );
   }
 }
 
-class _BudgetMetric extends StatelessWidget {
+class _Metric extends StatelessWidget {
   final String label;
   final String value;
-
-  const _BudgetMetric({required this.label, required this.value});
+  const _Metric({required this.label, required this.value});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: PokettoLightColors.surfaceWarm,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: PokettoLightColors.secondaryText,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: context.poketto.softSurface,
+            borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label,
+              style: TextStyle(color: context.poketto.mutedText, fontSize: 11)),
+          const SizedBox(height: 5),
           FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: PokettoLightColors.text,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              fit: BoxFit.scaleDown,
+              child: Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w900))),
+        ]),
+      );
 }
 
 class LightBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-
-  const LightBottomNav({
-    super.key,
-    this.currentIndex = 0,
-    required this.onTap,
-  });
+  const LightBottomNav({super.key, this.currentIndex = 0, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0x00FFFFFF),
-            PokettoLightColors.backgroundMid,
-          ],
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
-      child: Container(
-        height: 70,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: PokettoLightColors.border),
-          boxShadow: _softShadow(0.13),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _LightNavButton(
-              icon: Icons.home_rounded,
-              active: currentIndex == 0,
-              onTap: () => onTap(0),
-            ),
-            _LightNavButton(
-              icon: Icons.add_rounded,
-              active: currentIndex == 1,
-              featured: true,
-              onTap: () => onTap(1),
-            ),
-            _LightNavButton(
-              icon: Icons.insert_chart_outlined_rounded,
-              active: currentIndex == 2,
-              onTap: () => onTap(2),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LightNavButton extends StatelessWidget {
-  final IconData icon;
-  final bool active;
-  final bool featured;
-  final VoidCallback onTap;
-
-  const _LightNavButton({
-    required this.icon,
-    required this.active,
-    this.featured = false,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = featured || active
-        ? PokettoLightColors.primary
-        : PokettoLightColors.secondaryText;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: featured ? 54 : 44,
-        width: featured ? 54 : 44,
-        decoration: BoxDecoration(
-          color: featured
-              ? PokettoLightColors.primary
-              : (active
-                  ? PokettoLightColors.primary.withOpacity(0.12)
-                  : Colors.transparent),
-          borderRadius: BorderRadius.circular(featured ? 20 : 16),
-          boxShadow: featured
-              ? [
-                  BoxShadow(
-                    color: PokettoLightColors.primary.withOpacity(0.28),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : null,
-        ),
-        child: Icon(icon, color: featured ? Colors.white : color, size: 25),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => PokettoBottomNav(
+        currentIndex: currentIndex.clamp(0, 3),
+        onDestinationSelected: onTap,
+      );
 }
 
 class LightSectionTitle extends StatelessWidget {
@@ -628,61 +394,13 @@ class LightSectionTitle extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return _LightSectionTitle(
-      title: title,
-      actionLabel: actionLabel,
-      onAction: onAction,
-    );
-  }
-}
-
-class _LightSectionTitle extends StatelessWidget {
-  final String title;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const _LightSectionTitle({
-    required this.title,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: PokettoLightColors.text,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(
+          child: Text(title,
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
         ),
-        const Spacer(),
         if (actionLabel != null)
-          TextButton(
-            onPressed: onAction,
-            child: Text(
-              actionLabel!,
-              style: const TextStyle(
-                color: PokettoLightColors.primary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-List<BoxShadow> _softShadow(double opacity) {
-  return [
-    BoxShadow(
-      color: PokettoLightColors.primary.withOpacity(opacity),
-      blurRadius: 24,
-      offset: const Offset(0, 12),
-    ),
-  ];
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
+      ]);
 }

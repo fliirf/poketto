@@ -4,5 +4,6 @@ class ApiConfig {
     defaultValue: 'http://10.0.2.2:8000/api',
   );
 
-  static const Duration requestTimeout = Duration(seconds: 15);
+  // Render dapat membutuhkan cold start cukup lama sebelum Laravel siap.
+  static const Duration requestTimeout = Duration(seconds: 60);
 }

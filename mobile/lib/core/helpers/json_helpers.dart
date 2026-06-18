@@ -75,9 +75,10 @@ int? readInt(dynamic value) {
 
 double? readDouble(dynamic value) {
   if (value == null) return null;
-  if (value is double) return value;
-  if (value is num) return value.toDouble();
-  return double.tryParse(value.toString().replaceAll(',', '.'));
+  final parsed = value is num
+      ? value.toDouble()
+      : double.tryParse(value.toString().replaceAll(',', '.'));
+  return parsed != null && parsed.isFinite ? parsed : null;
 }
 
 bool readBool(dynamic value, {bool defaultValue = false}) {

@@ -7,8 +7,12 @@ class ExchangeRateService {
 
   const ExchangeRateService(this._apiClient);
 
-  Future<List<ExchangeRateModel>> getExchangeRates() async {
-    final response = await _apiClient.get('/exchange-rates');
+  Future<List<ExchangeRateModel>> getExchangeRates({
+    String base = 'IDR',
+  }) async {
+    final response = await _apiClient.get(
+      '/exchange-rates?base=${Uri.encodeQueryComponent(base.toUpperCase())}',
+    );
     final items = readListPayload(response, const ['exchange_rates', 'rates']);
     return items
         .map((item) => ExchangeRateModel.fromJson(asStringDynamicMap(item)))

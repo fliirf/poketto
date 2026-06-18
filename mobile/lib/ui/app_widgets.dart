@@ -5,38 +5,41 @@ class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry? margin;
-  final Color color;
+  final Color? color;
   final VoidCallback? onTap;
   final Border? border;
 
   const AppCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(PokettoSpacing.lg),
     this.margin,
-    this.color = AppColors.surface,
+    this.color,
     this.onTap,
     this.border,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.poketto;
+    final decoration = BoxDecoration(
+      color: color ?? theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(PokettoRadius.large),
+      border: border ?? Border.all(color: semantic.border),
+      boxShadow: [
+        BoxShadow(
+          color: semantic.shadow,
+          blurRadius: 18,
+          offset: const Offset(0, 7),
+        ),
+      ],
+    );
     final content = Container(
       width: double.infinity,
       margin: margin,
       padding: padding,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(22),
-        border: border,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow.withOpacity(0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: decoration,
       child: child,
     );
 
@@ -45,7 +48,7 @@ class AppCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(PokettoRadius.large),
         child: content,
       ),
     );
@@ -74,7 +77,10 @@ class AppButton extends StatelessWidget {
         ? const SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
           )
         : Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -84,28 +90,19 @@ class AppButton extends StatelessWidget {
                 Icon(icon, size: 18),
                 const SizedBox(width: 8),
               ],
-              Text(label),
+              Flexible(child: Text(label)),
             ],
           );
 
-    if (outlined) {
-      return OutlinedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primary,
-          side: const BorderSide(color: AppColors.border),
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        ),
-        child: child,
-      );
-    }
-
-    return ElevatedButton(
-      onPressed: isLoading ? null : onPressed,
-      child: child,
-    );
+    return outlined
+        ? OutlinedButton(
+            onPressed: isLoading ? null : onPressed,
+            child: child,
+          )
+        : ElevatedButton(
+            onPressed: isLoading ? null : onPressed,
+            child: child,
+          );
   }
 }
 
@@ -168,25 +165,46 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      color: AppColors.primary,
-      padding: const EdgeInsets.all(20),
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFF8A35), Color(0xFFFF6B00), Color(0xFF9A3900)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(.25),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title,
-              style: AppTextStyles.label.copyWith(color: Colors.white70)),
+              style: const TextStyle(
+                  color: Colors.white70, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               amount,
-              style: AppTextStyles.amount.copyWith(color: Colors.white),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-          const SizedBox(height: 18),
-          Row(children: metrics),
+          if (metrics.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Row(children: metrics),
+          ],
         ],
       ),
     );
@@ -200,6 +218,7 @@ class TransactionListItem extends StatelessWidget {
   final String amount;
   final bool isIncome;
   final String? locationLabel;
+  final String? timeLabel;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -211,83 +230,103 @@ class TransactionListItem extends StatelessWidget {
     required this.amount,
     required this.isIncome,
     this.locationLabel,
+    this.timeLabel,
     this.onTap,
     this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = context.poketto;
+    final amountColor = isIncome ? semantic.income : semantic.expense;
+
     return AppCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: PokettoSpacing.md),
+      padding: EdgeInsets.zero,
       onTap: onTap,
       child: GestureDetector(
         onLongPress: onLongPress,
         behavior: HitTestBehavior.opaque,
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceSoft,
-                borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(PokettoSpacing.md),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: semantic.softSurface,
+                  borderRadius: BorderRadius.circular(PokettoRadius.medium),
+                ),
+                child: Icon(icon, color: theme.colorScheme.primary, size: 21),
               ),
-              child: Icon(icon, color: AppColors.primary, size: 23),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: semantic.mutedText,
+                      ),
+                    ),
+                    if (locationLabel != null) ...[
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined,
+                              size: 13, color: semantic.mutedText),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              locationLabel!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 11, color: semantic.mutedText),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    amount,
+                    style: TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.text,
+                      fontWeight: FontWeight.w900,
+                      color: amountColor,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.label,
-                  ),
-                  if (locationLabel != null) ...[
+                  if (timeLabel != null) ...[
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on_outlined,
-                            size: 13, color: AppColors.mutedText),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            locationLabel!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.label.copyWith(fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ),
+                    Text(timeLabel!,
+                        style:
+                            TextStyle(fontSize: 11, color: semantic.mutedText)),
                   ],
                 ],
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              amount,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: isIncome ? AppColors.income : AppColors.expense,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -312,13 +351,13 @@ class AppFilterChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: AppColors.primary,
-      backgroundColor: AppColors.surface,
+      selectedColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       labelStyle: TextStyle(
-        color: selected ? Colors.white : AppColors.mutedText,
+        color: selected ? Colors.white : context.poketto.mutedText,
         fontWeight: FontWeight.w700,
       ),
-      side: const BorderSide(color: AppColors.border),
+      side: BorderSide(color: context.poketto.border),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
   }
@@ -342,6 +381,7 @@ class CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.zero,
@@ -352,17 +392,68 @@ class CategoryCard extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
+            color: context.poketto.softSurface,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Icon(icon, color: AppColors.primary),
+          child: Icon(icon, color: theme.colorScheme.primary),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+        title: Text(title,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(color: context.poketto.mutedText, fontSize: 12),
         ),
-        subtitle: Text(subtitle, style: AppTextStyles.label),
         trailing: trailing ?? const Icon(Icons.chevron_right),
+      ),
+    );
+  }
+}
+
+class PokettoBottomNav extends StatelessWidget {
+  final int currentIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  const PokettoBottomNav({
+    super.key,
+    required this.currentIndex,
+    required this.onDestinationSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: context.poketto.border),
+          boxShadow: [
+            BoxShadow(
+              color: context.poketto.shadow,
+              blurRadius: 28,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: NavigationBar(
+            selectedIndex: currentIndex,
+            onDestinationSelected: onDestinationSelected,
+            destinations: const [
+              NavigationDestination(
+                  icon: Icon(Icons.home_rounded), label: 'Dashboard'),
+              NavigationDestination(
+                  icon: Icon(Icons.bar_chart_rounded), label: 'Riwayat'),
+              NavigationDestination(
+                  icon: Icon(Icons.grid_view_rounded), label: 'Kategori'),
+              NavigationDestination(
+                  icon: Icon(Icons.settings_rounded), label: 'Settings'),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -382,54 +473,14 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(24, 6, 24, 18),
-      child: Container(
-        height: 66,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.shadow.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              onPressed: onHome,
-              icon: const Icon(Icons.home_rounded),
-              color: AppColors.primary,
-            ),
-            Transform.translate(
-              offset: const Offset(0, -14),
-              child: GestureDetector(
-                onTap: onAdd,
-                child: Container(
-                  width: 58,
-                  height: 58,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add_rounded,
-                      color: Colors.white, size: 30),
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: onReports,
-              icon: const Icon(Icons.insert_chart_outlined_rounded),
-              color: AppColors.inactive,
-            ),
-          ],
-        ),
-      ),
+    return PokettoBottomNav(
+      currentIndex: 0,
+      onDestinationSelected: (index) {
+        if (index == 0) onHome();
+        if (index == 1) onReports();
+        if (index == 2) onAdd();
+        if (index == 3) onReports();
+      },
     );
   }
 }

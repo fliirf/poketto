@@ -1,4 +1,3 @@
-import 'package:poketto/core/config/app_config.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/core/storage/token_storage.dart';
 import 'package:poketto/data/models/dashboard_summary_model.dart';
@@ -18,10 +17,23 @@ class DashboardRepository {
         _budgetAlertRepository = budgetAlertRepository,
         _tokenStorage = tokenStorage;
 
-  Future<DashboardSummaryModel> getSummary(int userId) async {
+  Future<DashboardSummaryModel> getSummary(
+    int userId, {
+    String? month,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? type,
+    int? categoryId,
+  }) async {
     await _requireRemoteSession();
 
-    final summary = await _dashboardService.getSummary();
+    final summary = await _dashboardService.getSummary(
+      month: month,
+      startDate: startDate,
+      endDate: endDate,
+      type: type,
+      categoryId: categoryId,
+    );
     final dailyBudget = _resolveDailyBudget(summary.dailyBudget);
     final alerts = _budgetAlertRepository.mergeAlerts(
       summary.alerts,
@@ -33,9 +45,19 @@ class DashboardRepository {
       totalExpense: summary.totalExpense,
       balance: summary.balance,
       dailyBudget: dailyBudget,
+      dailyExpense: summary.dailyExpense,
+      dailyBudgetRemaining: summary.dailyBudgetRemaining,
+      dailyBudgetPercentage: summary.dailyBudgetPercentage,
       monthlyBudget: summary.monthlyBudget,
+      monthlyExpense: summary.monthlyExpense,
+      monthlyBudgetRemaining: summary.monthlyBudgetRemaining,
+      monthlyBudgetPercentage: summary.monthlyBudgetPercentage,
+      currency: summary.currency,
+      budgetWarningThreshold: summary.budgetWarningThreshold,
+      period: summary.period,
       expenseTrend: summary.expenseTrend,
       categoryBreakdown: summary.categoryBreakdown,
+      categoryBudgets: summary.categoryBudgets,
       recentTransactions: summary.recentTransactions,
       alerts: alerts,
     );
@@ -56,6 +78,6 @@ class DashboardRepository {
       return backendDailyBudget;
     }
 
-    return AppConfig.dailyBudget > 0 ? AppConfig.dailyBudget : null;
+    return null;
   }
 }

@@ -1,6 +1,6 @@
 # Poketto Mobile
 
-Poketto Mobile adalah aplikasi Flutter untuk mencatat pemasukan/pengeluaran dan memantau kondisi keuangan pribadi. App berjalan sebagai client REST API, dengan fallback SQLite lokal untuk development/demo saat backend belum lengkap.
+Poketto Mobile adalah aplikasi Flutter untuk mencatat pemasukan/pengeluaran dan memantau kondisi keuangan pribadi. App berjalan sebagai client REST API Laravel dengan Neon PostgreSQL sebagai source of truth bersama web.
 
 ## Fitur
 
@@ -8,9 +8,9 @@ Poketto Mobile adalah aplikasi Flutter untuk mencatat pemasukan/pengeluaran dan 
 - Dashboard ringkasan: total pemasukan, total pengeluaran, saldo, transaksi terbaru, warning finansial, dan kurs jika endpoint tersedia.
 - CRUD transaksi: tambah, edit, hapus, dan refresh list.
 - Budget harian dapat diatur dari profile menu melalui `Budget Settings`.
-- Kategori transaksi dari API dengan fallback kategori lokal dan budget bulanan per kategori.
+- Kategori dan budget bulanan tersinkron dengan web melalui API.
 - Geolocation opsional saat menambah transaksi pengeluaran. App mencoba lokasi terakhir lalu current location dengan timeout pendek; jika gagal, transaksi tetap tersimpan tanpa lokasi dan list/edit transaksi menampilkan status lokasi.
-- In-app budget/financial warning dari API atau rule fallback.
+- In-app budget/financial warning dari backend.
 - Local notification HP untuk budget/financial warning melalui channel `Budget Alerts`.
 - Export laporan PDF dari fitur existing project.
 
@@ -20,7 +20,6 @@ Poketto Mobile adalah aplikasi Flutter untuk mencatat pemasukan/pengeluaran dan 
 - Provider untuk state sederhana
 - `http` untuk REST API
 - `flutter_secure_storage` untuk token
-- `sqflite` untuk fallback lokal
 - `geolocator` dan `geocoding` untuk lokasi
 - `flutter_local_notifications` untuk notifikasi lokal HP
 - `intl` untuk format tanggal dan mata uang
@@ -36,21 +35,10 @@ flutter pub get
 Backend API diatur melalui dart-define:
 
 ```bash
---dart-define=API_BASE_URL=http://10.0.2.2:8000/api
+--dart-define=API_BASE_URL=http://10.0.2.2:8002/api
 ```
 
-Budget harian fallback opsional:
-
-```bash
---dart-define=DAILY_BUDGET=100000
-```
-
-Prioritas budget harian:
-
-1. `daily_budget` dari backend `user-settings` atau dashboard summary jika tersedia.
-2. Budget lokal yang user simpan dari `Budget Settings`.
-3. `DAILY_BUDGET` dari dart-define.
-4. Jika semuanya kosong, warning harian tidak ditampilkan.
+Budget dan settings selalu berasal dari backend Laravel/Neon.
 
 ## Cara Run
 
@@ -60,20 +48,20 @@ Android emulator:
 flutter devices
 flutter emulators
 flutter emulators --launch <emulator_id>
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8002/api
 ```
 
 Android device fisik:
 
 ```bash
 flutter devices
-flutter run --dart-define=API_BASE_URL=http://<ip-komputer-atau-server>:8000/api
+flutter run --dart-define=API_BASE_URL=http://<ip-komputer-atau-server>:8002/api
 ```
 
 Chrome/web untuk cek UI cepat:
 
 ```bash
-flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000/api
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8002/api
 ```
 
 Catatan: target utama app ini mobile. Geolocation dan permission di web bisa berbeda dari Android/iOS.
@@ -81,7 +69,7 @@ Catatan: target utama app ini mobile. Geolocation dan permission di web bisa ber
 APK debug:
 
 ```bash
-flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:8000/api
+flutter build apk --debug --dart-define=API_BASE_URL=http://10.0.2.2:8002/api
 ```
 
 Output APK:
@@ -95,7 +83,7 @@ build/app/outputs/flutter-apk/app-debug.apk
 Default:
 
 ```txt
-http://10.0.2.2:8000/api
+http://10.0.2.2:8002/api
 ```
 
 Untuk Android emulator, `10.0.2.2` mengarah ke localhost komputer. Jika backend sudah online atau berjalan di IP LAN, ganti `API_BASE_URL`.
@@ -143,27 +131,11 @@ Response auth yang didukung termasuk:
 
 List API dapat berupa array langsung, `{ "data": [] }`, `{ "transactions": [] }`, atau wrapper serupa.
 
-## Fallback SQLite
+## Penyimpanan Data
 
-App selalu mencoba REST API lebih dulu ketika token tersedia.
+Autentikasi, kategori, transaksi, dashboard, settings, budget alert, dan kurs selalu menggunakan REST API Laravel dan Neon PostgreSQL. Mobile tidak memiliki database SQLite.
 
-SQLite lokal hanya dipakai untuk development/demo saat:
-
-- backend belum aktif,
-- endpoint belum dibuat,
-- endpoint mengembalikan 404/405/501,
-- koneksi timeout atau server tidak bisa dijangkau.
-
-Fallback mencakup auth lokal, kategori, transaksi, dashboard summary, budget harian, budget bulanan kategori, dan warning rule sederhana. Setelah backend stabil, TODO fallback di layer repository bisa dihapus.
-
-Budget lokal disimpan sebagai berikut:
-
-- Daily budget: `SharedPreferences`.
-- Category monthly budget: SQLite untuk kategori lokal dan `SharedPreferences` sebagai mirror jika endpoint kategori belum menerima field budget.
-- Category budget diakses dari profile menu melalui `Category Budgets`.
-- Database lokal dinaikkan ke schema version 9 dan akan reset otomatis saat upgrade dari schema lama agar struktur auth/kategori/transaksi demo bersih.
-
-Field budget kategori yang diparsing dari API: `monthly_budget`, `monthlyBudget`, `budget`, `limit`, atau `budget_limit`.
+Budget harian, budget bulanan, threshold, currency, dan notification settings disimpan melalui endpoint backend.
 
 Lokasi transaksi yang diparsing dari API: `location_lat/location_lng`, `latitude/longitude`, `lat/lng`, nested `location`, dan `location_name/address`.
 
@@ -207,14 +179,13 @@ Known analyzer issue di environment ini: analysis server crash dengan `Bad state
 - `flutter run` membutuhkan Android emulator/device. Jika belum muncul di `flutter devices`, launch emulator dari Android Studio atau `flutter emulators --launch <emulator_id>`.
 - Local notification sudah aktif melalui `flutter_local_notifications`. Jika notifikasi tidak muncul, cek permission notifikasi Poketto di device/emulator dan pastikan dashboard memiliki budget alert yang aktif.
 - Exchange rate hanya tampil jika backend menyediakan `/exchange-rates`.
-- Fallback SQLite tidak dimaksudkan sebagai source of truth final ketika backend sudah stabil.
 
 ## Demo Flow
 
 1. Jalankan backend dan pastikan `API_BASE_URL` benar.
 2. Buka app, register user baru atau login user existing.
 3. Buka profile menu lalu `Budget Settings`, set daily budget misalnya Rp50.000.
-4. Buka profile menu lalu `Category Budgets`, set budget kategori Makanan misalnya Rp100.000.
+4. Buka halaman `Kategori`, lalu atur budget kategori Makanan misalnya Rp100.000.
 5. Lihat dashboard: saldo, pemasukan, pengeluaran, budget harian, transaksi terbaru, dan warning jika ada.
 6. Tambah transaksi income.
 7. Tambah transaksi expense Makanan Rp80.000. Biarkan switch `Tambahkan lokasi` aktif untuk demo geolocation dan lihat status lokasi di form.

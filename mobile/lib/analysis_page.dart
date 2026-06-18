@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:poketto/data/repositories/app_repositories.dart';
 import 'package:poketto/providers/user_provider.dart';
 import 'package:poketto/pdf_report_generator.dart';
 import 'package:open_file/open_file.dart';
 import 'package:poketto/ui/app_theme.dart';
 import 'package:poketto/ui/app_widgets.dart';
+import 'package:poketto/ui/poketto_light_theme.dart';
 
 class AnalysisPage extends StatefulWidget {
   final DateTime? initialMonth;
@@ -31,11 +31,6 @@ class _AnalysisPageState extends State<AnalysisPage> {
   void initState() {
     super.initState();
     selectedMonth = widget.initialMonth ?? DateTime.now();
-    _initializeLocale();
-  }
-
-  Future<void> _initializeLocale() async {
-    await initializeDateFormatting('id_ID', null);
     _loadFinancialData();
   }
 
@@ -181,8 +176,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return PokettoGradientScaffold(
       body: SafeArea(
         child: Column(
           children: [

@@ -19,8 +19,6 @@ class BudgetAlertRepository {
     required List<Map<String, dynamic>> transactions,
     double? dailyBudget,
     List<Map<String, dynamic>> categories = const [],
-    Map<String, dynamic>? activeTarget,
-    Map<String, dynamic>? targetProgress,
   }) async {
     return getRemoteAlerts();
   }
@@ -44,6 +42,11 @@ class BudgetAlertRepository {
     }
 
     return merged;
+  }
+
+  Future<void> markAsRead(int id) async {
+    await _requireRemoteSession();
+    await _budgetAlertService.markAsRead(id);
   }
 
   Future<void> _requireRemoteSession() async {

@@ -1,24 +1,51 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/data/repositories/app_repositories.dart';
 import 'package:poketto/home.dart';
+import 'package:poketto/manage_categories_page.dart';
+import 'package:poketto/monthly_overview_page.dart';
+import 'package:poketto/budget_settings_page.dart';
 import 'package:poketto/onboarding_screen.dart';
 import 'package:poketto/providers/user_provider.dart';
+import 'package:poketto/providers/theme_controller.dart';
 import 'package:poketto/ui/app_theme.dart';
-import 'package:poketto/ui/poketto_light_theme.dart';
+import 'package:poketto/ui/auth_shell.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppRepositories.notifications.initialize();
+  await initializeDateFormatting('id_ID', null);
+  await initializeDateFormatting('id', null);
+  Intl.defaultLocale = 'id_ID';
+  final themeController = await ThemeController.load();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => UserProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => UserProvider()),
+        ChangeNotifierProvider.value(value: themeController),
+      ],
       child: const MyApp(),
     ),
   );
+
+  // Notification setup may wait on an Android permission/service response.
+  // Keep it off the critical path so the first Flutter frame is never blocked.
+  unawaited(_initializeNotifications());
+}
+
+Future<void> _initializeNotifications() async {
+  try {
+    await AppRepositories.notifications.initialize();
+  } catch (error) {
+    debugPrint('Notification initialization failed: $error');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -26,9 +53,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = context.watch<ThemeController>().themeMode;
     return MaterialApp(
       title: 'Poketto',
-      theme: PokettoLightTheme.theme,
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [
+        Locale('id', 'ID'),
+        Locale('en', 'US'),
+      ],
       // The app always starts with the LaunchScreen
       home: const LaunchScreen(),
       // Define all the navigation routes
@@ -37,6 +73,9 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
+        '/history': (context) => const MonthlyOverviewPage(),
+        '/categories': (context) => const ManageCategoriesPage(),
+        '/settings': (context) => const BudgetSettingsPage(),
       },
     );
   }
@@ -78,37 +117,70 @@ class _LaunchScreenState extends State<LaunchScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('userId');
+    final onboardingCompleted =
+        prefs.getBool('poketto_onboarding_completed') ?? false;
+
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
+    if (onboardingCompleted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      Navigator.pushReplacementNamed(context, '/onboarding');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/cat_pixel.png'),
-                  fit: BoxFit.contain,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: dark
+                ? const [Color(0xFF201A16), Color(0xFF0D0B0A)]
+                : const [Color(0xFFFFFBF7), Color(0xFFFFE4D0)],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 112,
+                height: 112,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface.withOpacity(.8),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: context.poketto.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(.16),
+                      blurRadius: 32,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: Image.asset('assets/cat_pixel.png'),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'POKETTO',
+                style: AppTextStyles.hero.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  letterSpacing: 2,
                 ),
               ),
-            ),
-            const SizedBox(height: 30),
-            const Text(
-              'POKETTO',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: AppColors.accent,
-              ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text('Keuangan teratur, hidup lebih tenang',
+                  style: TextStyle(color: context.poketto.mutedText)),
+            ],
+          ),
         ),
       ),
     );
@@ -185,173 +257,101 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 60),
-                // Logo
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/cat_pixel.png'),
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'POKETTO',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.accent,
-                  ),
-                ),
-                const Text(
-                  'Keuangan Teratur, Hidup Makmur',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.mutedText,
-                  ),
-                ),
-                const SizedBox(height: 40),
-
-                // Email Field
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Email tidak boleh kosong';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Email tidak valid';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Password Field
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Password tidak boleh kosong';
-                    }
-                    if (value.length < 6) {
-                      return 'Password minimal 6 karakter';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Tombol Log In
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Log In'),
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // Tombol Sign Up
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/register');
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.accent,
-                      side: const BorderSide(color: AppColors.accent),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: const Text('Sign Up'),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Link Lupa Kata Sandi
-                TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Fitur reset password belum tersedia'),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Lupa Kata Sandi?',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.mutedText,
-                    ),
-                  ),
-                ),
-              ],
+    return PokettoAuthShell(
+      eyebrow: 'Selamat datang',
+      title: 'Masuk ke Poketto',
+      subtitle:
+          'Lanjutkan pencatatan dan lihat kesehatan finansialmu dalam satu tempat.',
+      form: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              key: const ValueKey('login-email'),
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Email tidak boleh kosong';
+                }
+                if (!value.contains('@')) return 'Email tidak valid';
+                return null;
+              },
             ),
-          ),
+            const SizedBox(height: PokettoSpacing.md),
+            TextFormField(
+              key: const ValueKey('login-password'),
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                if (!_isLoading) _handleLogin();
+              },
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                suffixIcon: IconButton(
+                  tooltip: _obscurePassword
+                      ? 'Tampilkan password'
+                      : 'Sembunyikan password',
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Password tidak boleh kosong';
+                }
+                if (value.length < 6) return 'Password minimal 6 karakter';
+                return null;
+              },
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Fitur reset password belum tersedia')),
+                ),
+                child: const Text('Lupa kata sandi?'),
+              ),
+            ),
+            const SizedBox(height: PokettoSpacing.xs),
+            ElevatedButton(
+              key: const ValueKey('login-submit'),
+              onPressed: _isLoading ? null : _handleLogin,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Masuk'),
+            ),
+          ],
         ),
+      ),
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('Belum punya akun?',
+              style: TextStyle(color: context.poketto.mutedText)),
+          TextButton(
+            onPressed: () => Navigator.pushNamed(context, '/register'),
+            child: const Text('Daftar'),
+          ),
+        ],
       ),
     );
   }
@@ -450,180 +450,148 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Akun'),
-        backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-
-                // Nama Field
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Nama Lengkap',
-                    prefixIcon: const Icon(Icons.person),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Nama tidak boleh kosong';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Email Field
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Email tidak boleh kosong';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Email tidak valid';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Password Field
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Password tidak boleh kosong';
-                    }
-                    if (value.length < 8) {
-                      return 'Password minimal 8 karakter';
-                    }
-                    if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                      return 'Password perlu huruf besar';
-                    }
-                    if (!RegExp(r'[a-z]').hasMatch(value)) {
-                      return 'Password perlu huruf kecil';
-                    }
-                    if (!RegExp(r'[0-9]').hasMatch(value)) {
-                      return 'Password perlu angka';
-                    }
-                    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(value)) {
-                      return 'Password perlu simbol';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Confirm Password Field
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  obscureText: _obscureConfirmPassword,
-                  decoration: InputDecoration(
-                    labelText: 'Konfirmasi Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureConfirmPassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() =>
-                            _obscureConfirmPassword = !_obscureConfirmPassword);
-                      },
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Konfirmasi password tidak boleh kosong';
-                    }
-                    if (value != _passwordController.text) {
-                      return 'Password tidak cocok';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Tombol Daftar
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleRegister,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Daftar'),
-                  ),
-                ),
-              ],
+    return PokettoAuthShell(
+      eyebrow: 'Akun baru',
+      title: 'Mulai bersama Poketto',
+      subtitle:
+          'Buat akun untuk mencatat transaksi, mengatur budget, dan membaca pola pengeluaranmu.',
+      showBackButton: true,
+      form: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              key: const ValueKey('register-name'),
+              controller: _nameController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Nama lengkap',
+                prefixIcon: Icon(Icons.person_outline_rounded),
+              ),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'Nama tidak boleh kosong'
+                  : null,
             ),
-          ),
+            const SizedBox(height: PokettoSpacing.md),
+            TextFormField(
+              key: const ValueKey('register-email'),
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Email tidak boleh kosong';
+                }
+                if (!value.contains('@')) return 'Email tidak valid';
+                return null;
+              },
+            ),
+            const SizedBox(height: PokettoSpacing.md),
+            TextFormField(
+              key: const ValueKey('register-password'),
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                suffixIcon: IconButton(
+                  tooltip: _obscurePassword
+                      ? 'Tampilkan password'
+                      : 'Sembunyikan password',
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              validator: _validateRegisterPassword,
+            ),
+            const SizedBox(height: PokettoSpacing.md),
+            TextFormField(
+              key: const ValueKey('register-confirm-password'),
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirmPassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) {
+                if (!_isLoading) _handleRegister();
+              },
+              decoration: InputDecoration(
+                labelText: 'Konfirmasi password',
+                prefixIcon: const Icon(Icons.verified_user_outlined),
+                suffixIcon: IconButton(
+                  tooltip: _obscureConfirmPassword
+                      ? 'Tampilkan konfirmasi'
+                      : 'Sembunyikan konfirmasi',
+                  icon: Icon(_obscureConfirmPassword
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined),
+                  onPressed: () => setState(
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Konfirmasi password tidak boleh kosong';
+                }
+                if (value != _passwordController.text) {
+                  return 'Password tidak cocok';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: PokettoSpacing.sm),
+            Text(
+              'Minimal 8 karakter dengan huruf besar, huruf kecil, angka, dan simbol.',
+              style: AppTextStyles.caption
+                  .copyWith(color: context.poketto.mutedText),
+            ),
+            const SizedBox(height: PokettoSpacing.lg),
+            ElevatedButton(
+              key: const ValueKey('register-submit'),
+              onPressed: _isLoading ? null : _handleRegister,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Buat akun'),
+            ),
+          ],
         ),
       ),
+      footer: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('Sudah punya akun?',
+              style: TextStyle(color: context.poketto.mutedText)),
+          TextButton(
+            onPressed: () => Navigator.maybePop(context),
+            child: const Text('Masuk'),
+          ),
+        ],
+      ),
     );
+  }
+
+  String? _validateRegisterPassword(String? value) {
+    if (value == null || value.isEmpty) return 'Password tidak boleh kosong';
+    if (value.length < 8) return 'Password minimal 8 karakter';
+    if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Password perlu huruf besar';
+    if (!RegExp(r'[a-z]').hasMatch(value)) return 'Password perlu huruf kecil';
+    if (!RegExp(r'[0-9]').hasMatch(value)) return 'Password perlu angka';
+    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(value)) {
+      return 'Password perlu simbol';
+    }
+    return null;
   }
 }

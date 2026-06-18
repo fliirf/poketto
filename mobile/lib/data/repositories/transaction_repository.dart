@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/core/storage/token_storage.dart';
+import 'package:poketto/data/models/transaction_model.dart';
 import 'package:poketto/data/services/location_service.dart';
 import 'package:poketto/data/services/transaction_service.dart';
 
@@ -29,6 +30,23 @@ class TransactionRepository {
         .toList();
   }
 
+  Future<List<TransactionModel>> getTransactions({
+    String? month,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? type,
+    int? categoryId,
+  }) async {
+    await _requireRemoteSession();
+    return _transactionService.getTransactions(
+      month: month,
+      startDate: startDate,
+      endDate: endDate,
+      type: type,
+      categoryId: categoryId,
+    );
+  }
+
   Future<int> createTransaction({
     required int userId,
     required int categoryId,
@@ -36,7 +54,6 @@ class TransactionRepository {
     required double amount,
     required String description,
     required DateTime transactionDate,
-    int? budgetId,
     TransactionLocation? location,
   }) async {
     await _requireRemoteSession();
@@ -59,7 +76,6 @@ class TransactionRepository {
     required double amount,
     required String description,
     required DateTime transactionDate,
-    int? budgetId,
     TransactionLocation? location,
   }) async {
     await _requireRemoteSession();

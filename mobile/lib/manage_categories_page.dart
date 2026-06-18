@@ -9,6 +9,7 @@ import 'package:poketto/providers/user_provider.dart';
 import 'package:poketto/ui/app_feedback.dart';
 import 'package:poketto/ui/app_theme.dart';
 import 'package:poketto/ui/app_widgets.dart';
+import 'package:poketto/ui/poketto_light_theme.dart';
 
 class ManageCategoriesPage extends StatefulWidget {
   final String? initialAddType;
@@ -22,6 +23,7 @@ class ManageCategoriesPage extends StatefulWidget {
 class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
   List<Map<String, dynamic>> _incomeCategories = [];
   List<Map<String, dynamic>> _expenseCategories = [];
+  List<Map<String, dynamic>> _monthlyTransactions = [];
   bool _isLoading = true;
   bool _isSavingCategory = false;
   bool _isDeletingCategory = false;
@@ -37,6 +39,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
     try {
       final userId = Provider.of<UserProvider>(context, listen: false).userId;
+      if (userId == null) {
+        if (mounted) Navigator.pushReplacementNamed(context, '/login');
+        return;
+      }
+      final currentMonth = DateFormat('yyyy-MM').format(DateTime.now());
       final results = await Future.wait([
         AppRepositories.categories.getCategoriesForUi(
           type: 'income',
@@ -46,14 +53,20 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
           type: 'expense',
           userId: userId,
         ),
+        AppRepositories.transactions.getTransactionsByMonthForUi(
+          userId: userId,
+          month: currentMonth,
+        ),
       ]);
       final income = results[0];
       final expense = results[1];
+      final transactions = results[2];
       if (!mounted) return;
 
       setState(() {
         _incomeCategories = income;
         _expenseCategories = expense;
+        _monthlyTransactions = transactions;
         _isLoading = false;
       });
 
@@ -82,111 +95,122 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       text: _formatBudgetInput(readDouble(category?['monthly_budget'])),
     );
     final formKey = GlobalKey<FormState>();
+    var selectedType = type;
 
     await showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(isEdit ? 'Edit Kategori' : 'Tambah Kategori'),
-        content: SingleChildScrollView(
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  autofocus: true,
-                  textInputAction: type == 'expense'
-                      ? TextInputAction.next
-                      : TextInputAction.done,
-                  onFieldSubmitted: (_) {
-                    if (type != 'expense') {
-                      _submitCategoryDialog(
-                        isEdit: isEdit,
-                        type: type,
-                        category: category,
-                        nameController: nameController,
-                        budgetController: budgetController,
-                        formKey: formKey,
-                      );
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Nama Kategori',
-                    hintText:
-                        type == 'income' ? 'Contoh: Freelance' : 'Contoh: Kopi',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Nama kategori tidak boleh kosong';
-                    }
-                    return null;
-                  },
-                ),
-                if (type == 'expense') ...[
-                  const SizedBox(height: 14),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(isEdit ? 'Edit Kategori' : 'Tambah Kategori'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   TextFormField(
-                    controller: budgetController,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (value) => _formatBudgetField(budgetController),
+                    controller: nameController,
+                    autofocus: true,
+                    textInputAction: selectedType == 'expense'
+                        ? TextInputAction.next
+                        : TextInputAction.done,
+                    onFieldSubmitted: (_) {
+                      if (selectedType != 'expense') {
+                        _submitCategoryDialog(
+                          isEdit: isEdit,
+                          type: selectedType,
+                          category: category,
+                          nameController: nameController,
+                          budgetController: budgetController,
+                          formKey: formKey,
+                        );
+                      }
+                    },
                     decoration: InputDecoration(
-                      labelText: 'Budget Bulanan (Opsional)',
-                      hintText: 'Rp. 100.000',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      labelText: 'Nama Kategori',
+                      hintText: selectedType == 'income'
+                          ? 'Contoh: Freelance'
+                          : 'Contoh: Kopi',
                     ),
                     validator: (value) {
-                      final amount = _parseCurrency(value ?? '');
-                      if (value == null || value.trim().isEmpty) return null;
-                      if (amount == null || amount <= 0) {
-                        return 'Budget harus angka lebih dari 0';
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Nama kategori tidak boleh kosong';
                       }
                       return null;
                     },
                   ),
+                  if (!isEdit) ...[
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: const InputDecoration(labelText: 'Tipe'),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'expense', child: Text('Pengeluaran')),
+                        DropdownMenuItem(
+                            value: 'income', child: Text('Pemasukan')),
+                      ],
+                      onChanged: (value) => setDialogState(
+                          () => selectedType = value ?? selectedType),
+                    ),
+                  ],
+                  if (selectedType == 'expense') ...[
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: budgetController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (value) =>
+                          _formatBudgetField(budgetController),
+                      decoration: const InputDecoration(
+                        labelText: 'Budget Bulanan (Opsional)',
+                        hintText: 'Rp. 100.000',
+                      ),
+                      validator: (value) {
+                        final amount = _parseCurrency(value ?? '');
+                        if (value == null || value.trim().isEmpty) return null;
+                        if (amount == null || amount <= 0) {
+                          return 'Budget harus angka lebih dari 0';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: _isSavingCategory
+                  ? null
+                  : () => _submitCategoryDialog(
+                        isEdit: isEdit,
+                        type: selectedType,
+                        category: category,
+                        nameController: nameController,
+                        budgetController: budgetController,
+                        formKey: formKey,
+                      ),
+              child: _isSavingCategory
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(isEdit ? 'Simpan' : 'Tambah'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: _isSavingCategory
-                ? null
-                : () => _submitCategoryDialog(
-                      isEdit: isEdit,
-                      type: type,
-                      category: category,
-                      nameController: nameController,
-                      budgetController: budgetController,
-                      formKey: formKey,
-                    ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            child: _isSavingCategory
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : Text(isEdit ? 'Simpan' : 'Tambah'),
-          ),
-        ],
       ),
     );
   }
@@ -351,8 +375,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return PokettoGradientScaffold(
+      bottomNavigationBar: PokettoBottomNav(
+        currentIndex: 2,
+        onDestinationSelected: _navigate,
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -362,8 +389,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back,
-                        size: 28, color: AppColors.primary),
+                    child: Icon(Icons.arrow_back,
+                        size: 28, color: Theme.of(context).colorScheme.primary),
                   ),
                   const SizedBox(width: 12),
                   const Text(
@@ -377,8 +404,8 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(24, 30, 24, 0),
-                decoration: const BoxDecoration(
-                  color: AppColors.background,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(28),
                     topRight: Radius.circular(28),
@@ -390,6 +417,12 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
                         onRefresh: _loadCategories,
                         child: ListView(
                           children: [
+                            Text(
+                              'Kelola kategori pemasukan, pengeluaran, dan budget bulanan.',
+                              style:
+                                  TextStyle(color: context.poketto.mutedText),
+                            ),
+                            const SizedBox(height: 20),
                             _buildSectionHeader(
                               'Kategori Pemasukan',
                               () => _showCategoryDialog('income'),
@@ -431,7 +464,7 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
         IconButton(
           onPressed: onAdd,
           icon: const Icon(Icons.add_circle_outline),
-          color: AppColors.primary,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ],
     );
@@ -442,44 +475,134 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(text, style: const TextStyle(color: Colors.black54)),
+      child: Text(text, style: TextStyle(color: context.poketto.mutedText)),
     );
   }
 
   Widget _buildCategoryItem(Map<String, dynamic> category) {
     final type = readString(category['type']) ?? 'expense';
     final monthlyBudget = readDouble(category['monthly_budget']);
+    final categoryId = readInt(category['category_id'] ?? category['id']);
+    final used = _monthlyTransactions.fold<double>(0, (total, tx) {
+      final txCategoryId = readInt(tx['category_id'] ?? tx['categoryId']);
+      final txType = readString(tx['category_type'] ?? tx['type']);
+      if (txCategoryId != categoryId || txType != type) return total;
+      return total + (readDouble(tx['amount']) ?? 0);
+    });
+    final progress =
+        monthlyBudget != null && monthlyBudget > 0 ? used / monthlyBudget : 0.0;
+    final exceeded = progress >= 1;
+    final warning = progress >= .75;
+    final statusColor = exceeded
+        ? context.poketto.expense
+        : warning
+            ? context.poketto.warning
+            : context.poketto.income;
+    final title = readString(category['name']) ?? 'Kategori';
 
-    return CategoryCard(
-      icon: Icons.category_outlined,
-      title: readString(category['name']) ?? 'Kategori',
-      subtitle: type == 'income'
-          ? 'Pemasukan'
-          : monthlyBudget != null && monthlyBudget > 0
-              ? 'Budget: ${_formatCurrency(monthlyBudget)}'
-              : 'Budget bulanan belum diatur',
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            onPressed: _isDeletingCategory
-                ? null
-                : () => _showCategoryDialog(type, category: category),
-            icon: const Icon(Icons.edit_outlined, size: 20),
-            color: AppColors.primary,
+          Row(
+            children: [
+              Expanded(
+                child: Text(title,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w900)),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(.13),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  type == 'income' ? 'PEMASUKAN' : 'PENGELUARAN',
+                  style: TextStyle(
+                      color: statusColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: _isDeletingCategory
-                ? null
-                : () => _showDeleteCategoryDialog(category),
-            icon: const Icon(Icons.delete_outline, size: 20),
-            color: Colors.red,
+          const SizedBox(height: 7),
+          Text(
+            type == 'income'
+                ? 'Total bulan ini: ${_formatCurrency(used)}'
+                : monthlyBudget != null && monthlyBudget > 0
+                    ? 'Budget: ${_formatCurrency(monthlyBudget)}'
+                    : 'Budget bulanan belum diatur',
+            style: TextStyle(color: context.poketto.mutedText),
+          ),
+          if (type == 'expense' &&
+              monthlyBudget != null &&
+              monthlyBudget > 0) ...[
+            const SizedBox(height: 5),
+            Text(
+              exceeded
+                  ? 'Melebihi budget!'
+                  : warning
+                      ? '${(progress * 100).toStringAsFixed(0)}% terpakai'
+                      : 'Status aman',
+              style: TextStyle(
+                  color: statusColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 5),
+            Text('${_formatCurrency(used)} digunakan',
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                minHeight: 9,
+                value: progress.clamp(0, 1),
+                color: statusColor,
+                backgroundColor: context.poketto.softSurface,
+              ),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: _isDeletingCategory
+                    ? null
+                    : () => _showCategoryDialog(type, category: category),
+                icon: const Icon(Icons.edit_outlined, size: 17),
+                label: const Text('Edit'),
+              ),
+              TextButton.icon(
+                onPressed: _isDeletingCategory
+                    ? null
+                    : () => _showDeleteCategoryDialog(category),
+                icon: const Icon(Icons.delete_outline, size: 17),
+                label: const Text('Hapus'),
+                style: TextButton.styleFrom(
+                    foregroundColor: context.poketto.expense),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  void _navigate(int index) {
+    if (index == 2) return;
+    if (index == 0) {
+      Navigator.popUntil(context, (route) => route.isFirst);
+      return;
+    }
+    Navigator.pushReplacementNamed(
+        context, index == 1 ? '/history' : '/settings');
   }
 }

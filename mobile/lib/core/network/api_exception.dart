@@ -18,7 +18,7 @@ class ApiException implements Exception {
 
   String get userMessage {
     if (statusCode == null) {
-      return 'Koneksi bermasalah. Data lokal sementara akan digunakan jika tersedia.';
+      return 'Koneksi ke server bermasalah. Periksa internet atau backend Poketto.';
     }
 
     switch (statusCode) {

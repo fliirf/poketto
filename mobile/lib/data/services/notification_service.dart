@@ -14,6 +14,7 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  bool _permissionRequested = false;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -21,9 +22,9 @@ class NotificationService {
     try {
       const android = AndroidInitializationSettings('@mipmap/ic_launcher');
       const darwin = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
       );
       const settings = InitializationSettings(
         android: android,
@@ -44,7 +45,6 @@ class NotificationService {
           importance: Importance.high,
         ),
       );
-      await androidPlugin?.requestNotificationsPermission();
 
       _initialized = true;
     } catch (error) {
@@ -57,6 +57,7 @@ class NotificationService {
 
     try {
       await initialize();
+      await _requestPermissionWhenNeeded();
       final prefs = await SharedPreferences.getInstance();
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
@@ -85,6 +86,24 @@ class NotificationService {
     } catch (error) {
       debugPrint('Notification error: $error');
     }
+  }
+
+  Future<void> _requestPermissionWhenNeeded() async {
+    if (_permissionRequested) return;
+    _permissionRequested = true;
+
+    final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.requestNotificationsPermission();
+
+    final iosPlugin = _notifications.resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    await iosPlugin?.requestPermissions(alert: true, badge: true, sound: true);
+
+    final macosPlugin = _notifications.resolvePlatformSpecificImplementation<
+        MacOSFlutterLocalNotificationsPlugin>();
+    await macosPlugin?.requestPermissions(
+        alert: true, badge: true, sound: true);
   }
 
   String _titleForAlert(BudgetAlertModel alert) {

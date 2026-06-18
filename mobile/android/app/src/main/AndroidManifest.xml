@@ -8,6 +8,7 @@
     <application
         android:label="Poketto"
         android:name="${applicationName}"
+        android:usesCleartextTraffic="true"
         android:icon="@drawable/cat_pixel">
         <activity
             android:name=".MainActivity"

@@ -2,7 +2,6 @@ import 'package:poketto/core/network/api_exception.dart';
 import 'package:poketto/core/storage/token_storage.dart';
 import 'package:poketto/data/models/user_model.dart';
 import 'package:poketto/data/services/auth_service.dart';
-import 'package:poketto/database/database_helper.dart';
 
 class AuthSession {
   final UserModel user;
@@ -19,15 +18,12 @@ class AuthSession {
 class AuthRepository {
   final AuthService _authService;
   final TokenStorage _tokenStorage;
-  final DatabaseHelper _databaseHelper;
 
   const AuthRepository({
     required AuthService authService,
     required TokenStorage tokenStorage,
-    required DatabaseHelper databaseHelper,
   })  : _authService = authService,
-        _tokenStorage = tokenStorage,
-        _databaseHelper = databaseHelper;
+        _tokenStorage = tokenStorage;
 
   Future<AuthSession> login({
     required String email,
@@ -45,16 +41,8 @@ class AuthRepository {
         );
       }
       await _saveRemoteSession(response);
-      final localUserId = await _saveLocalAuthUser(
-        user: response.user,
-        password: password,
-      );
       return AuthSession(
-        user: UserModel(
-          id: localUserId ?? response.user.id,
-          name: response.user.name,
-          email: response.user.email,
-        ),
+        user: response.user,
         token: response.token,
       );
     } on ApiException {
@@ -79,16 +67,8 @@ class AuthRepository {
       if (response.token != null) {
         await _saveRemoteSession(response);
       }
-      final localUserId = await _saveLocalAuthUser(
-        user: response.user,
-        password: password,
-      );
       return AuthSession(
-        user: UserModel(
-          id: localUserId ?? response.user.id,
-          name: response.user.name,
-          email: response.user.email,
-        ),
+        user: response.user,
         token: response.token,
       );
     } on ApiException {
@@ -104,7 +84,7 @@ class AuthRepository {
     try {
       final user = await _authService.me();
       await _tokenStorage.saveUserCache(user.toJson());
-      return AuthSession(user: await _localizeCachedUser(user), token: token);
+      return AuthSession(user: user, token: token);
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
         await _tokenStorage.clearToken();
@@ -131,30 +111,5 @@ class AuthRepository {
       await _tokenStorage.saveToken(response.token!);
     }
     await _tokenStorage.saveUserCache(response.user.toJson());
-  }
-
-  Future<int?> _saveLocalAuthUser({
-    required UserModel user,
-    required String password,
-  }) async {
-    try {
-      return await _databaseHelper.upsertUser(
-        name: user.name,
-        email: user.email,
-        password: password,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<UserModel> _localizeCachedUser(UserModel user) async {
-    try {
-      final localUser = await _databaseHelper.getUserByEmail(user.email);
-      if (localUser == null) return user;
-      return UserModel.fromJson(localUser);
-    } catch (_) {
-      return user;
-    }
   }
 }
